@@ -5,9 +5,19 @@ import { join } from 'node:path';
 
 const { Pool } = pg;
 
+// Supabase (and most hosted Postgres) needs TLS; node-postgres treats sslmode=require as full
+// certificate verification and fails on the pooler's chain. Strip it and pass ssl explicitly.
+const rawUrl = process.env.DATABASE_URL ?? '';
+const isLocal = /localhost|127\.0\.0\.1|host=\/tmp/.test(rawUrl);
+const url = rawUrl.replace(/([?&])sslmode=[^&]*&?/, '$1').replace(/[?&]$/, '');
+if (!rawUrl) console.error('DATABASE_URL is not set');
+else console.log(`db: ${url.replace(/:\/\/([^:]+):[^@]+@/, '://$1:****@')}`);
+
 export const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: url,
   max: 8,
+  ssl: isLocal ? undefined : { rejectUnauthorized: false },
+  connectionTimeoutMillis: 20000,
 });
 
 export async function q<T = any>(text: string, params: unknown[] = []): Promise<T[]> {
