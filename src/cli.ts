@@ -31,6 +31,7 @@ async function main() {
       await ingestBoxScores(s, y, { plays: args.plays === '1' });
       const r = await computeRatings(s, y);
       await saveRatings(s, y, isoDate(new Date()), r.ratings);
+      try { await q(`select refresh_rollups()`); } catch (e) { console.warn('rollup refresh skipped:', (e as Error).message); }
       console.log(`${s.id} ${y}: ratings saved for ${r.ratings.length} teams (${r.games} games, ${r.skipped} skipped, HCA ${r.hca.toFixed(2)}, league ${r.leagueAvg.toFixed(1)})`);
       break;
     }
@@ -40,6 +41,7 @@ async function main() {
       const r = await computeRatings(s, y, { priorGames: args.prior ? Number(args.prior) : undefined });
       const asOf = args.asof ?? isoDate(new Date());
       await saveRatings(s, y, asOf, r.ratings);
+      try { await q(`select refresh_rollups()`); } catch (e) { console.warn('rollup refresh skipped:', (e as Error).message); }
       console.log(`${s.id} ${y}: ${r.ratings.length} teams rated from ${r.games} games (${r.skipped} skipped). League eff ${r.leagueAvg.toFixed(1)}, home adv ${r.hca.toFixed(2)} per side.`);
       break;
     }
