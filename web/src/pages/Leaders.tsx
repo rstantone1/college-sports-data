@@ -106,7 +106,7 @@ export function LeadersPage() {
       if (who === 'players') {
         const gp = N(r.gp ?? r.games ?? Math.max(N(r.g_bat), N(r.g_pit)));
         if (gp < Math.max(3, maxGp * 0.4) && !(sport !== 'cfb' && !meta.hoops)) continue;   // regulars only
-        if (!byId.has(r.team_id)) continue;                                                 // D-I teams only
+        if (byId.size && !byId.has(r.team_id)) continue;                                   // D-I teams only (once ratings exist)
       }
       if (stat.min && !stat.min(r)) continue;
       const v = stat.calc(r);
