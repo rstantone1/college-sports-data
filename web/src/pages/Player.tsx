@@ -120,7 +120,7 @@ export function PlayerPage() {
         </div>
         <div className="grid" style={{ alignContent: 'start' }}>
           {meta.hoops && (shots.data?.length ?? 0) > 0 && (
-            <div className="panel"><h3>Shot chart, this season</h3><ShotChart shots={shots.data!} color={color === '#FFFFFF' ? '#0B1220' : color} title={p.display_name} /></div>
+            <div className="panel"><h3>Shot chart, this season</h3><p className="muted sm">Games where shot locations were logged.</p><ShotChart shots={shots.data!} color={color === '#FFFFFF' ? '#0B1220' : color} title={p.display_name} /></div>
           )}
           <div className="panel">
             <h3>Career path</h3>
