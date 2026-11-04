@@ -35,16 +35,17 @@ export function TransfersPage() {
     if (q) { const s = q.toLowerCase(); if (!`${x.display_name} ${x.from_team} ${x.to_team}`.toLowerCase().includes(s)) return false; }
     return true;
   });
-  const withStats = all.filter((x) => x.gp && x.gp >= 10);
-  const totalPts = withStats.reduce((a, x) => a + Number(x.pts ?? 0), 0);
+  const doubleDigit = all.filter((x) => x.gp && x.gp >= 10 && Number(x.pts) / x.gp >= 10).length;
+  const starters = all.filter((x) => x.gp && x.gs && x.gs >= x.gp / 2 && x.gp >= 10).length;
 
   return (
     <>
       <h1>Transfer tracker</h1>
-      <p className="sub">Every player who changed schools since last season, with what they produced before the move. Built from rosters and box scores, so it fills in as players appear in games.</p>
+      <p className="sub">Every player who changed schools since last season, with what they produced before the move. Stats are last season's per-game averages at the old school. The list fills in as players appear in games.</p>
       <div className="cards" style={{ marginBottom: 16 }}>
         <div className="card"><div className="k">Players moved</div><div className="v">{all.length.toLocaleString()}</div><div className="r">with a game on record at both schools</div></div>
-        <div className="card"><div className="k">Points relocated</div><div className="v">{Math.round(totalPts).toLocaleString()}</div><div className="r">last-season points by movers with 10+ games</div></div>
+        <div className="card"><div className="k">Double-digit scorers</div><div className="v">{doubleDigit}</div><div className="r">averaged 10+ points last season</div></div>
+        <div className="card"><div className="k">Starters</div><div className="v">{starters}</div><div className="r">started most of their games last season</div></div>
         <div className="card"><div className="k">Moved up</div><div className="v">{all.filter((x) => (byId.get(x.to_team_id)?.rank ?? 999) < (byId.get(x.from_team_id)?.rank ?? 999)).length}</div><div className="r">to a higher-rated program</div></div>
       </div>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
@@ -61,7 +62,7 @@ export function TransfersPage() {
       <div className="panel">
         <div className="tblwrap">
           <table className="tbl">
-            <thead><tr><th className="l">Player</th><th className="l">From</th><th className="l">To</th><th>GP</th><th>PTS</th><th>REB</th><th>AST</th><th className="hide-sm">FG%</th><th className="hide-sm">3P%</th></tr></thead>
+            <thead><tr><th className="l">Player</th><th className="l">From</th><th className="l">To</th><th>GP</th><th>PPG</th><th>RPG</th><th>APG</th><th className="hide-sm">FG%</th><th className="hide-sm">3P%</th></tr></thead>
             <tbody>
               {rows.slice(0, 400).map((x) => {
                 const f = byId.get(x.from_team_id), to = byId.get(x.to_team_id);

@@ -82,6 +82,7 @@ export function BallotPage() {
           <div className="grid" style={{ alignContent: 'start' }}>
             <div className="panel" style={{ textAlign: 'center' }}>
               <div className="muted">Agreement with the model</div>
+              <div className="muted sm">100 means your order matches the ratings exactly</div>
               <div className="agree" style={{ color: agree > 80 ? 'var(--win)' : agree > 55 ? 'var(--gold)' : 'var(--hot)' }}>{agree}</div>
               <div className="muted sm">{agree > 90 ? 'You and the math are in sync.' : agree > 70 ? 'Mostly aligned, a few strong opinions.' : agree > 50 ? 'You see things the numbers don\'t.' : 'Bold. Very bold.'}</div>
             </div>

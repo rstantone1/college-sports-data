@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useCtx, useRatings, distinctPair } from '../hooks';
 import { Loading, ErrorBox } from '../components/Shell';
-import { predict, league, pct, f1 } from '../model';
+import { predict, league, pct, f1, perGame } from '../model';
 import type { Rating } from '../api';
 
 export function MatchupPage() {
@@ -95,9 +95,9 @@ export function MatchupPage() {
 
         <table style={{ margin: '16px auto 0', borderCollapse: 'collapse' }}>
           <tbody>
-            {edge('Margin', a.adj_em, b.adj_em)}
-            {edge('Offense', a.adj_off, b.adj_off)}
-            {edge('Defense', a.adj_def, b.adj_def, true)}
+            {edge('Rating', perGame(a, sport).rating, perGame(b, sport).rating)}
+            {edge('Offense / game', perGame(a, sport).off, perGame(b, sport).off)}
+            {edge('Defense / game', perGame(a, sport).def, perGame(b, sport).def, true)}
             {meta.hoops && edge('Pace', a.tempo, b.tempo)}
           </tbody>
         </table>

@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { restAll, type Game, type Rating } from '../api';
 import { useAsync, useCtx, useRatings } from '../hooks';
 import { Loading, ErrorBox, TeamCell } from '../components/Shell';
-import { predict, league, pct, sign } from '../model';
+import { predict, league, pct, sign, perGame } from '../model';
 
 // Tournament odds by simulation. Each run: play out every remaining game using the model's win chances, then pick a
 // field the way a selection committee roughly does: one automatic bid per conference (its best-rated team wins the
@@ -129,14 +129,14 @@ export function TournamentPage() {
                     <td className="num">{s.projW.toFixed(1)}-{s.projL.toFixed(1)}</td>
                     <td className="num" style={{ fontSize: 18, color: s.inPct > 0.8 ? 'var(--win)' : s.inPct < 0.3 ? 'var(--hot)' : 'var(--gold)' }}>{pct(s.inPct)}</td>
                     <td className="hide-sm num">{pct(s.autoPct)}</td>
-                    <td className="hide-sm num">#{r.rank} <span className="muted sm">{sign(r.adj_em)}</span></td>
+                    <td className="hide-sm num">#{r.rank} <span className="muted sm">{sign(perGame(r, sport).rating)}</span></td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
         </div>
-        <div className="legend"><span>Seed: average seed line when the team makes it</span><span>Projected: expected final record</span><span>Auto bid: chance of winning its conference tournament</span></div>
+        <div className="legend"><span>Seed: average seed line when the team makes it</span><span>Projected: expected final record</span><span>Auto bid: chance of winning its conference tournament</span><span>Rating: national rank and points per game vs. an average team</span></div>
       </div>
       <p className="muted sm" style={{ marginTop: 12 }}>Want the full picture for one team? Open its page from the list, or <Link to={`${base}/ballot`} style={{ color: 'var(--cool)' }}>build your own Top 25</Link>.</p>
     </>

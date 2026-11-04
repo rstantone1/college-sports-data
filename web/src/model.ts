@@ -30,6 +30,15 @@ export function normCdf(z: number) {
   return z > 0 ? 1 - p : p;
 }
 
+// Per-game versions of the ratings, for people. A team's own pace converts "per 100 possessions"
+// (or per 10 drives / per 9 innings) into points in a typical game for that team.
+export const perGame = (r: Rating, sport: string) => {
+  const m = sportMeta(sport);
+  const k = r.tempo / m.scale;
+  return { rating: r.adj_em * k, off: r.adj_off * k, def: r.adj_def * k };
+};
+export const ratingPG = (r: Rating, sport: string) => perGame(r, sport).rating;
+
 export const pct = (p: number) => `${Math.round(p * 100)}%`;
 export const f1 = (v: number) => (Number.isFinite(v) ? v.toFixed(1) : '–');
 export const f2 = (v: number) => (Number.isFinite(v) ? v.toFixed(2) : '–');

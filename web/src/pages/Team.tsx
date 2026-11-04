@@ -4,7 +4,7 @@ import { rest, restAll, type Game } from '../api';
 import { useAsync, useCtx, useRatings, teamColor, onColor, fmtDate } from '../hooks';
 import { Back, Loading, ErrorBox } from '../components/Shell';
 import { LineChart } from '../components/Charts';
-import { f1, sign, pct, predict, league } from '../model';
+import { f1, sign, pct, predict, league, perGame } from '../model';
 
 interface CfbLine { player_id: number; display_name: string; stat_group: string; games: number; totals: Record<string, number> }
 interface DiamondLine { player_id: number; display_name: string; g_bat: number; ab: number; r: number; h: number; rbi: number; bb: number; so: number; g_pit: number; ip: number; ha: number; er: number; bba: number; k: number; }
@@ -63,9 +63,9 @@ export function TeamPage() {
       </section>
 
       <div className="cards" style={{ marginBottom: 16 }}>
-        <div className="card"><div className="k">Margin</div><div className="v" style={{ color: me.adj_em >= 0 ? 'var(--win)' : 'var(--hot)' }}>{sign(me.adj_em, dp)}</div><div className="r">{meta.effLabel}</div></div>
-        <div className="card"><div className="k">Offense</div><div className="v">{me.adj_off.toFixed(dp)}</div><div className="r">#{me.off_rank} nationally</div></div>
-        <div className="card"><div className="k">{meta.hoops ? 'Defense' : 'Run prevention'}</div><div className="v">{me.adj_def.toFixed(dp)}</div><div className="r">#{me.def_rank} nationally</div></div>
+        <div className="card"><div className="k">Rating</div><div className="v" style={{ color: me.adj_em >= 0 ? 'var(--win)' : 'var(--hot)' }}>{sign(perGame(me, sport).rating, dp)}</div><div className="r">{meta.pointWord} per game vs. an average team</div></div>
+        <div className="card"><div className="k">Offense</div><div className="v">{perGame(me, sport).off.toFixed(dp)}</div><div className="r">{meta.pointWord} per game · #{me.off_rank}</div></div>
+        <div className="card"><div className="k">Defense</div><div className="v">{perGame(me, sport).def.toFixed(dp)}</div><div className="r">allowed per game · #{me.def_rank}</div></div>
         {meta.hoops && <div className="card"><div className="k">Pace</div><div className="v">{f1(me.tempo)}</div><div className="r">possessions / game</div></div>}
         {upcoming.length > 0 && <div className="card"><div className="k">Projected record</div><div className="v">{Math.round(projW)}-{totalG - Math.round(projW)}</div><div className="r">{wins}-{done.length - wins} so far</div></div>}
       </div>
@@ -119,8 +119,9 @@ export function TeamPage() {
         <div className="grid" style={{ alignContent: 'start' }}>
           <div className="panel">
             <h3>Rating over the season</h3>
+            <p className="muted sm">{meta.pointWord[0].toUpperCase() + meta.pointWord.slice(1)} per game better than average, day by day.</p>
             <LineChart color={color === '#FFFFFF' ? '#0B1220' : color}
-              points={(hist.data ?? []).map((h) => ({ x: fmtDate(h.as_of + 'T12:00:00'), y: Number(h.adj_em) }))} yLabel="Margin over time" />
+              points={(hist.data ?? []).map((h) => ({ x: fmtDate(h.as_of + 'T12:00:00'), y: Number(h.adj_em) * (me.tempo / meta.scale) }))} yLabel="Rating over time" />
           </div>
           {meta.hoops && (moves.data?.length ?? 0) > 0 && (
             <div className="panel">
