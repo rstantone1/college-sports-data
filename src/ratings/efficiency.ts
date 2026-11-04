@@ -85,6 +85,7 @@ export async function computeRatings(s: SportConfig, seasonYear: number, opts: {
   const homeGames = tg.filter((g) => g.home === 1);
   let hca = priorHCA;
 
+  const additive = s.scoringUnit === 'inning' || s.scoringUnit === 'minute';
   const teams = [...new Set(tg.map((g) => g.team))];
 
   // Preseason prior: last season's final rating, regressed halfway to league average (scaled to this season's
@@ -118,8 +119,13 @@ export async function computeRatings(s: SportConfig, seasonYear: number, opts: {
       for (const g of gs) {
         const offEff = (g.pts / g.units) * scale - g.home * hca;       // remove home boost from offense
         const defEff = (g.oppPts / g.units) * scale + g.home * hca;    // opponent's offense was suppressed/helped by venue
-        so += (offEff * L) / adjD.get(g.opp)!;
-        sd += (defEff * L) / adjO.get(g.opp)!;
+        if (additive) {   // low-scoring sports: shift by opponent strength instead of scaling (multiplying overreacts to blowouts)
+          so += offEff - (adjD.get(g.opp)! - L);
+          sd += defEff - (adjO.get(g.opp)! - L);
+        } else {
+          so += (offEff * L) / adjD.get(g.opp)!;
+          sd += (defEff * L) / adjO.get(g.opp)!;
+        }
         st += (g.units * g.regFactor * LT) / adjT.get(g.opp)!;
       }
       const n = gs.length;

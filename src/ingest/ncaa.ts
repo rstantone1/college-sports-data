@@ -35,6 +35,19 @@ async function cached(kind: string, key: string, path: string, fresh: boolean) {
   return payload;
 }
 
+const ABBR: Record<string, string> = { sec: 'SEC', acc: 'ACC', 'big-ten': 'Big Ten', 'big-12': 'Big 12', 'pac-12': 'Pac-12', 'big-east': 'Big East',
+  aac: 'American', 'mid-american': 'MAC', mac: 'MAC', 'mountain-west': 'Mountain West', mwc: 'Mountain West', wcc: 'WCC', wac: 'WAC',
+  swac: 'SWAC', meac: 'MEAC', caa: 'CAA', 'coastal': 'CAA', asun: 'ASUN', 'atlantic-sun': 'ASUN', 'atlantic-10': 'A-10', mvc: 'MVC',
+  'missouri-valley': 'MVC', 'sun-belt': 'Sun Belt', 'conference-usa': 'C-USA', cusa: 'C-USA', 'big-south': 'Big South', 'big-west': 'Big West',
+  'big-sky': 'Big Sky', 'ohio-valley': 'OVC', ovc: 'OVC', 'southern': 'SoCon', socon: 'SoCon', southland: 'Southland', summit: 'Summit',
+  'summit-league': 'Summit', horizon: 'Horizon', 'horizon-league': 'Horizon', 'america-east': 'America East', patriot: 'Patriot',
+  'ivy-league': 'Ivy', metro: 'MAAC', ivy: 'Ivy', maac: 'MAAC', nec: 'NEC', 'northeast': 'NEC', dii: 'D-II', independent: 'Independent', 'dl-independent': 'Independent' };
+// Division II / III / NAIA leagues whose teams show up as non-conference opponents. Not rated as D-I.
+const NON_D1 = new Set(['ccs', 'ciaa', 'conference-carolinas', 'g-mac', 'gulf-south', 'little-east', 'lone-star', 'nsic', 'pac', 'peach-belt',
+  'sac', 'siac', 'uac-', 'uac', 'dii', 'diii', 'gliac', 'gnac', 'glvc', 'mec', 'rmac', 'ssc', 'ccaa', 'psac', 'cacc', 'ne10', 'northeast-10',
+  'eccc', 'gac', 'great-american', 'mountain-east', 'miaa', 'heartland', 'naia', 'nccaa', 'usca', 'east-coast', 'sunshine-state']);
+const confName = (seo: string, name?: string) => (name && name.trim()) || ABBR[seo] || seo.split('-').filter(Boolean).map((w) => w[0].toUpperCase() + w.slice(1)).join(' ');
+
 const logo = (seo: string) => `https://www.ncaa.com/sites/default/files/images/logos/schools/bgl/${seo}.svg`;
 const toNum = (v: any) => { const n = Number(String(v ?? '').replace('%', '')); return Number.isFinite(n) ? n : undefined; };
 const ip = (v: any) => { const [f, p] = String(v ?? '').split('.').map(Number); return Number.isFinite(f) ? f + (Number.isFinite(p) ? p / 3 : 0) : undefined; };
@@ -58,12 +71,14 @@ async function team(s: SportConfig, t: any, seasonYear: number): Promise<number 
        t.color ? String(t.color).replace('#', '') : null, logo(seo)]);
     id = row!.id; teamIds.set(key, id);
   }
-  const conf = t.conferences?.[0];
-  if (conf?.conferenceSeo && conf.conferenceSeo !== 'top-25') {
+  const conf = (t.conferences ?? []).find((c: any) => c?.conferenceSeo && c.conferenceSeo !== 'top-25');
+  if (conf && NON_D1.has(conf.conferenceSeo)) return id;
+  if (conf) {
+    const nm = confName(conf.conferenceSeo, conf.conferenceName);
     const c = await one<{ id: number }>(
       `insert into conferences(sport_id, espn_id, name, short_name) values ($1,$2,$3,$4)
-       on conflict (sport_id, espn_id) do update set name=excluded.name returning id`,
-      [s.id, `ncaa:${conf.conferenceSeo}`, conf.conferenceName ?? conf.conferenceSeo, conf.conferenceName ?? conf.conferenceSeo]);
+       on conflict (sport_id, espn_id) do update set name=excluded.name, short_name=excluded.short_name returning id`,
+      [s.id, `ncaa:${conf.conferenceSeo}`, nm, ABBR[conf.conferenceSeo] ?? nm]);
     await q(`insert into team_seasons(team_id, season_year, conference_id) values ($1,$2,$3)
              on conflict (team_id, season_year) do update set conference_id=excluded.conference_id`, [id, seasonYear, c!.id]);
   }
