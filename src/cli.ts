@@ -2,7 +2,7 @@ import { migrate, close, q } from './db.js';
 import { sport, seasonYearFor, isoDate, SPORTS } from './sports.js';
 import { ingestTeams } from './ingest/teams.js';
 import { ingestGames } from './ingest/games.js';
-import { ingestBoxScores } from './ingest/boxscores.js';
+import { ingestBoxScores, ingestOdds } from './ingest/boxscores.js';
 import { ingestRosters } from './ingest/rosters.js';
 import { computeRatings, saveRatings } from './ratings/efficiency.js';
 import { ingestNcaaGames, ingestNcaaBox } from './ingest/ncaa.js';
@@ -30,6 +30,7 @@ async function main() {
     case 'ingest:teams': { const s = sport(args.sport); await teamsFor(s, season(s.id)); break; }
     case 'ingest:games': { const s = sport(args.sport); await gamesFor(s, season(s.id), { until: args.until ? new Date(args.until) : undefined, refreshDays: args.refresh ? Number(args.refresh) : undefined }); break; }
     case 'ingest:box': { const s = sport(args.sport); await boxFor(s, season(s.id), { plays: args.plays === '1', limit: args.limit ? Number(args.limit) : undefined }); break; }
+    case 'ingest:odds': { const s = sport(args.sport); await ingestOdds(s, season(s.id), { limit: args.limit ? Number(args.limit) : undefined }); break; }
     case 'ingest:rosters': { const s = sport(args.sport); await ingestRosters(s, season(s.id)); break; }
 
     // Full daily refresh for one sport: schedule/scores, new box scores, ratings.
@@ -105,6 +106,7 @@ async function main() {
   ingest:teams   --sport=mbb [--season=2027]
   ingest:games   --sport=mbb [--season=2027] [--until=YYYY-MM-DD] [--refresh=3]
   ingest:box     --sport=mbb [--season=2027] [--plays=1] [--limit=N]
+  ingest:odds    --sport=mbb [--season=2026] [--limit=N]   refetch lines for games stored before odds were kept
   ingest:rosters --sport=mbb [--season=2027]
   ratings        --sport=mbb [--season=2027] [--prior=6] [--asof=YYYY-MM-DD]
   daily          --sport=mbb [--plays=1]

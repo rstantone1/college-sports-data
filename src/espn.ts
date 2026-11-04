@@ -75,8 +75,9 @@ export function parseStat(name: string, display: string): Record<string, number>
   return out;
 }
 
-// Keep only the parts of a game summary we parse. News, video, odds widgets and standings are dropped.
-const KEEP = ['header', 'boxscore', 'gameInfo', 'plays', 'drives', 'leaders', 'format'];
+// Keep only the parts of a game summary we parse. News, video and standings are dropped; pickcenter (pregame
+// lines from the market and from other models) is kept so predictions can be graded against them.
+const KEEP = ['header', 'boxscore', 'gameInfo', 'plays', 'drives', 'leaders', 'format', 'pickcenter'];
 function trimSummary(p: any) {
   if (!p || typeof p !== 'object') return p;
   const out: any = {};

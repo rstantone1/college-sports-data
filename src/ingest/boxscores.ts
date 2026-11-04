@@ -46,6 +46,54 @@ function playerStats(keys: string[], values: string[]): Record<string, number> {
 
 export interface BoxOptions { plays?: boolean }
 
+// Pregame lines. ESPN's pickcenter lists several providers: the market ("consensus" through 2022, then a named
+// sportsbook) and model projections (numberfire, teamrankings). We keep the whole list and pull out the market
+// line as the home-team spread (negative = home favored) and the total.
+const MARKET = ['consensus', 'draftkings', 'espn bet', 'caesars', 'bet365', 'fanduel', 'westgate', 'william hill', 'pointsbet', 'betmgm', 'unibet'];
+export function parseOdds(sum: any): { raw: any[] | null; spread: number | null; total: number | null; provider: string | null } {
+  const pc: any[] = Array.isArray(sum?.pickcenter) ? sum.pickcenter : [];
+  if (!pc.length) return { raw: null, spread: null, total: null, provider: null };
+  const raw = pc.map((x) => ({
+    provider: x.provider?.name ?? null, spread: x.spread ?? null, overUnder: x.overUnder ?? null, details: x.details ?? null,
+    homeFavorite: x.homeTeamOdds?.favorite ?? null, homeML: x.homeTeamOdds?.moneyLine ?? null, awayML: x.awayTeamOdds?.moneyLine ?? null,
+  }));
+  const rank = (n: string | null) => { const i = MARKET.indexOf((n ?? '').toLowerCase()); return i < 0 ? 99 : i; };
+  const m = [...raw].filter((x) => x.spread != null || x.overUnder != null).sort((a, b) => rank(a.provider) - rank(b.provider))[0];
+  if (!m || rank(m.provider) === 99) return { raw, spread: null, total: null, provider: null };
+  let spread: number | null = m.spread == null ? null : Number(m.spread);
+  if (spread != null) {
+    // ESPN's spread is from the home team's view, but be defensive: the favorite flag is authoritative when present.
+    if (m.homeFavorite === true && spread > 0) spread = -spread;
+    if (m.homeFavorite === false && spread < 0) spread = -spread;
+  }
+  return { raw, spread, total: m.overUnder == null ? null : Number(m.overUnder), provider: m.provider };
+}
+
+// Refetch summaries for games that have no line stored yet and save only the odds. Used once to fill in games
+// ingested before odds were kept; ingestBoxScore handles it for everything after.
+export async function ingestOdds(s: SportConfig, seasonYear: number, opts: { limit?: number } = {}) {
+  const todo = await q<{ id: number; espn_id: string }>(
+    `select id, espn_id from games where sport_id=$1 and season_year=$2 and completed and odds is null
+     order by start_time limit $3`, [s.id, seasonYear, opts.limit ?? 100000]);
+  let n = 0, found = 0, failed = 0, next = 0;
+  const worker = async () => {
+    while (next < todo.length) {
+      const g = todo[next++];
+      try {
+        const sum = await espn.summary(s, g.espn_id, true);
+        const o = parseOdds(sum);
+        // Mark looked-at games with an empty array so they aren't refetched forever.
+        await q(`update games set odds=$2, spread=$3, total=$4, odds_provider=$5 where id=$1`,
+          [g.id, JSON.stringify(o.raw ?? []), o.spread, o.total, o.provider]);
+        n++; if (o.spread != null) found++;
+      } catch (e) { failed++; console.warn(`odds ${s.id}/${g.espn_id}: ${(e as Error).message}`); }
+      if (n % 200 === 0 && n) console.log(`${s.id}: ${n}/${todo.length} checked, ${found} with a line`);
+    }
+  };
+  await Promise.all(Array.from({ length: 4 }, worker));
+  console.log(`${s.id} ${seasonYear}: ${n} games checked, ${found} with a market line, ${failed} failed`);
+}
+
 export async function ingestBoxScore(s: SportConfig, gameRow: { id: number; espn_id: string }, opts: BoxOptions = {}) {
   const sum = await espn.summary(s, gameRow.espn_id);
   const comp = sum?.header?.competitions?.[0];
@@ -58,14 +106,17 @@ export async function ingestBoxScore(s: SportConfig, gameRow: { id: number; espn
 
   // Game-level details that only the summary has.
   const gi = sum?.gameInfo;
+  const odds = parseOdds(sum);
   await q(
     `update games set venue_name=coalesce($2, venue_name), venue_city=coalesce($3, venue_city), venue_state=coalesce($4, venue_state),
        attendance=coalesce($5, attendance), periods=coalesce($6, periods), season_type=coalesce($7, season_type),
-       neutral_site=coalesce($8, neutral_site), conference_game=coalesce($9, conference_game) where id=$1`,
+       neutral_site=coalesce($8, neutral_site), conference_game=coalesce($9, conference_game),
+       odds=coalesce($10, odds), spread=coalesce($11, spread), total=coalesce($12, total), odds_provider=coalesce($13, odds_provider) where id=$1`,
     [gameRow.id, gi?.venue?.fullName ?? null, gi?.venue?.address?.city ?? null, gi?.venue?.address?.state ?? null,
      gi?.attendance ?? comp?.attendance ?? null,
      competitors[0]?.linescores?.length ?? null, sum?.header?.season?.type ?? null,
-     comp?.neutralSite ?? null, comp?.conferenceCompetition ?? null]);
+     comp?.neutralSite ?? null, comp?.conferenceCompetition ?? null,
+     odds.raw ? JSON.stringify(odds.raw) : null, odds.spread, odds.total, odds.provider]);
 
   // Team box score.
   for (const t of sum?.boxscore?.teams ?? []) {
