@@ -11,7 +11,7 @@
 import { q } from '../db.js';
 import type { SportConfig } from '../sports.js';
 
-export const MODEL_VERSION = 'aeff-v1';
+export const MODEL_VERSION = 'aeff-v1'; // v1 + preseason prior from last season (same table, same version key)
 
 // Presentation scale per sport: per 100 possessions, per 10 drives, per 9 (or 7) innings, per 90 minutes.
 const SCALE: Record<string, number> = { possession: 100, drive: 10, inning: 9, minute: 90 };
@@ -86,6 +86,24 @@ export async function computeRatings(s: SportConfig, seasonYear: number, opts: {
   let hca = priorHCA;
 
   const teams = [...new Set(tg.map((g) => g.team))];
+
+  // Preseason prior: last season's final rating, regressed halfway to league average (scaled to this season's
+  // league level). Teams with no history start at average. Worth priorK games, so it fades as games accumulate.
+  const prev = await q<{ team_id: number; adj_off: string; adj_def: string; tempo: string }>(
+    `select r.team_id, r.adj_off, r.adj_def, r.tempo from ratings r
+     join (select max(as_of) a from ratings where sport_id=$1 and season_year=$2) m on r.as_of=m.a
+     where r.sport_id=$1 and r.season_year=$2`, [s.id, seasonYear - 1]);
+  const prevL = prev.length ? prev.reduce((a, r) => a + Number(r.adj_off), 0) / prev.length : 0;
+  const prevT = prev.length ? prev.reduce((a, r) => a + Number(r.tempo), 0) / prev.length : 0;
+  const prior = new Map<number, { o: number; d: number; t: number }>();
+  for (const r of prev) {
+    const regress = 0.5;
+    prior.set(r.team_id, {
+      o: L * (1 + regress * (Number(r.adj_off) / prevL - 1)),
+      d: L * (1 + regress * (Number(r.adj_def) / prevL - 1)),
+      t: LT * (1 + regress * (Number(r.tempo) / prevT - 1)),
+    });
+  }
   const adjO = new Map<number, number>(), adjD = new Map<number, number>(), adjT = new Map<number, number>();
   for (const t of teams) { adjO.set(t, L); adjD.set(t, L); adjT.set(t, LT); }
   const byTeam = new Map<number, TeamGame[]>();
@@ -106,7 +124,8 @@ export async function computeRatings(s: SportConfig, seasonYear: number, opts: {
       }
       const n = gs.length;
       // Shrink toward league average: prior worth priorK games.
-      const o = (so + priorK * L) / (n + priorK), d = (sd + priorK * L) / (n + priorK), tp = (st + priorK * LT) / (n + priorK);
+      const pr = prior.get(t) ?? { o: L, d: L, t: LT };
+      const o = (so + priorK * pr.o) / (n + priorK), d = (sd + priorK * pr.d) / (n + priorK), tp = (st + priorK * pr.t) / (n + priorK);
       maxDelta = Math.max(maxDelta, Math.abs(o - adjO.get(t)!), Math.abs(d - adjD.get(t)!));
       nextO.set(t, o); nextD.set(t, d); nextT.set(t, tp);
     }
