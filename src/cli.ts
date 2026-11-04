@@ -36,6 +36,22 @@ async function main() {
       break;
     }
 
+    // Finish any unprocessed box scores from the previous season, then re-rate it as of its last game.
+    case 'catchup': {
+      const s = sport(args.sport); const y = season(s.id) - 1;
+      const left = await q<{ c: string }>(`select count(*) c from games where sport_id=$1 and season_year=$2 and completed and box_fetched_at is null`, [s.id, y]);
+      const n = Number(left[0].c);
+      console.log(`${s.id} ${y}: ${n} box scores outstanding`);
+      if (n === 0) break;
+      await ingestBoxScores(s, y, { plays: args.plays === '1', limit: Number(args.limit ?? 2500) });
+      const last = await q<{ d: string }>(`select max(start_time)::date::text d from games where sport_id=$1 and season_year=$2 and completed`, [s.id, y]);
+      const r = await computeRatings(s, y);
+      await saveRatings(s, y, last[0].d, r.ratings);
+      try { await q(`select refresh_rollups()`); } catch { /* local db */ }
+      console.log(`${s.id} ${y}: re-rated ${r.ratings.length} teams as of ${last[0].d}`);
+      break;
+    }
+
     case 'ratings': {
       const s = sport(args.sport); const y = season(s.id);
       const r = await computeRatings(s, y, { priorGames: args.prior ? Number(args.prior) : undefined });

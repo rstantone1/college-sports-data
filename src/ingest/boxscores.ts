@@ -100,51 +100,79 @@ export async function ingestBoxScore(s: SportConfig, gameRow: { id: number; espn
     }
   }
 
-  // Player box score (+ roster membership for the season).
+  // Player box score (+ roster membership for the season). Batched: a few round trips per game.
   const seasonYear = sum?.header?.season?.year;
+  type Row = { tid: number; a: any; group: string; keys: string[] };
+  const rows: Row[] = [];
   for (const side of sum?.boxscore?.players ?? []) {
     const tid = teamIds.get(String(side.team?.id));
     if (!tid) continue;
     for (const group of side.statistics ?? []) {
-      const keys: string[] = group.keys ?? group.names ?? [];
-      const groupName: string = group.type ?? 'box';
-      for (const a of group.athletes ?? []) {
-        const pid = await playerId(s, a.athlete);
-        if (!pid) continue;
-        const dnp = !!a.didNotPlay || (a.stats ?? []).length === 0;
-        const stats = dnp ? {} : playerStats(keys, a.stats);
-        await q(
-          `insert into game_player_stats(game_id, team_id, player_id, starter, did_not_play, stat_group, stats)
-           values ($1,$2,$3,$4,$5,$6,$7)
-           on conflict (game_id, player_id, stat_group) do update set team_id=excluded.team_id, starter=excluded.starter,
-             did_not_play=excluded.did_not_play, stats=excluded.stats`,
-          [gameRow.id, tid, pid, a.starter ?? null, dnp, groupName, JSON.stringify(stats)]);
-        if (seasonYear) {
-          await q(
-            `insert into rosters(player_id, team_id, season_year, jersey, position)
-             values ($1,$2,$3,$4,$5)
-             on conflict (player_id, team_id, season_year) do update set
-               jersey=coalesce(excluded.jersey, rosters.jersey), position=coalesce(excluded.position, rosters.position), last_seen=now()`,
-            [pid, tid, seasonYear, a.athlete?.jersey ?? null, a.athlete?.position?.abbreviation ?? null]);
-        }
+      for (const a of group.athletes ?? []) if (a.athlete?.id) rows.push({ tid, a, group: group.type ?? 'box', keys: group.keys ?? group.names ?? [] });
+    }
+  }
+  if (rows.length) {
+    const uniq = new Map<string, any>();
+    for (const r of rows) uniq.set(String(r.a.athlete.id), r.a.athlete);
+    const athletes = [...uniq.values()];
+    const pv: unknown[] = [];
+    const ph = athletes.map((a, i) => {
+      pv.push(s.id, String(a.id), a.displayName ?? a.shortName ?? `Player ${a.id}`, a.firstName ?? null, a.lastName ?? null);
+      return `($${i * 5 + 1},$${i * 5 + 2},$${i * 5 + 3},$${i * 5 + 4},$${i * 5 + 5})`;
+    }).join(',');
+    const ids = await q<{ id: number; espn_id: string }>(
+      `insert into players(sport_id, espn_id, display_name, first_name, last_name) values ${ph}
+       on conflict (sport_id, espn_id) do update set display_name=excluded.display_name,
+         first_name=coalesce(excluded.first_name, players.first_name), last_name=coalesce(excluded.last_name, players.last_name)
+       returning id, espn_id`, pv);
+    const pidOf = new Map(ids.map((r) => [r.espn_id, r.id]));
+
+    const sv: unknown[] = [];
+    const seen = new Set<string>();
+    const sh: string[] = [];
+    for (const r of rows) {
+      const pid = pidOf.get(String(r.a.athlete.id)); if (!pid) continue;
+      const k = `${pid}:${r.group}`; if (seen.has(k)) continue; seen.add(k);
+      const dnp = !!r.a.didNotPlay || (r.a.stats ?? []).length === 0;
+      const b = sv.length;
+      sv.push(gameRow.id, r.tid, pid, r.a.starter ?? null, dnp, r.group, JSON.stringify(dnp ? {} : playerStats(r.keys, r.a.stats)));
+      sh.push(`($${b + 1},$${b + 2},$${b + 3},$${b + 4},$${b + 5},$${b + 6},$${b + 7})`);
+    }
+    if (sh.length) await q(
+      `insert into game_player_stats(game_id, team_id, player_id, starter, did_not_play, stat_group, stats) values ${sh.join(',')}
+       on conflict (game_id, player_id, stat_group) do update set team_id=excluded.team_id, starter=excluded.starter,
+         did_not_play=excluded.did_not_play, stats=excluded.stats`, sv);
+
+    if (seasonYear) {
+      const rv: unknown[] = []; const rh: string[] = []; const rs = new Set<string>();
+      for (const r of rows) {
+        const pid = pidOf.get(String(r.a.athlete.id)); if (!pid) continue;
+        const k = `${pid}:${r.tid}`; if (rs.has(k)) continue; rs.add(k);
+        const b = rv.length;
+        rv.push(pid, r.tid, seasonYear, r.a.athlete?.jersey ?? null, r.a.athlete?.position?.abbreviation ?? null);
+        rh.push(`($${b + 1},$${b + 2},$${b + 3},$${b + 4},$${b + 5})`);
       }
+      if (rh.length) await q(
+        `insert into rosters(player_id, team_id, season_year, jersey, position) values ${rh.join(',')}
+         on conflict (player_id, team_id, season_year) do update set
+           jersey=coalesce(excluded.jersey, rosters.jersey), position=coalesce(excluded.position, rosters.position), last_seen=now()`, rv);
     }
   }
 
   // Play-by-play (basketball has shot coordinates). Off by default: big.
   if (opts.plays && Array.isArray(sum?.plays) && sum.plays.length) {
-    const rows: any[] = [];
+    const prow: any[] = [];
     for (const p of sum.plays) {
       const tid = p.team?.id ? teamIds.get(String(p.team.id)) ?? null : null;
-      rows.push([gameRow.id, Number(p.sequenceNumber ?? p.id), p.period?.number ?? null, p.clock?.displayValue ?? null, tid,
+      prow.push([gameRow.id, Number(p.sequenceNumber ?? p.id), p.period?.number ?? null, p.clock?.displayValue ?? null, tid,
         p.type?.text ?? null, p.text ?? null, !!p.scoringPlay, p.scoreValue ?? null, p.homeScore ?? null, p.awayScore ?? null,
         p.coordinate?.x ?? null, p.coordinate?.y ?? null,
         JSON.stringify((p.participants ?? []).map((x: any) => ({ espn_id: x.athlete?.id })))]);
     }
     // batched multi-row insert
     const cols = 14;
-    for (let i = 0; i < rows.length; i += 200) {
-      const chunk = rows.slice(i, i + 200);
+    for (let i = 0; i < prow.length; i += 500) {
+      const chunk = prow.slice(i, i + 500);
       const values = chunk.map((_, r) => `(${Array.from({ length: cols }, (_, c) => `$${r * cols + c + 1}`).join(',')})`).join(',');
       await q(
         `insert into plays(game_id, sequence, period, clock, team_id, play_type, description, scoring_play, score_value, home_score, away_score, x, y, participants)
@@ -160,11 +188,16 @@ export async function ingestBoxScores(s: SportConfig, seasonYear: number, opts: 
   const todo = await q<{ id: number; espn_id: string }>(
     `select id, espn_id from games where sport_id=$1 and season_year=$2 and completed and box_fetched_at is null
      order by start_time limit $3`, [s.id, seasonYear, opts.limit ?? 100000]);
-  let n = 0, failed = 0;
-  for (const g of todo) {
-    try { await ingestBoxScore(s, g, opts); n++; }
-    catch (e) { failed++; console.warn(`box ${s.id}/${g.espn_id}: ${(e as Error).message}`); }
-    if (n % 100 === 0 && n) console.log(`${s.id}: ${n}/${todo.length} box scores`);
-  }
+  let n = 0, failed = 0, next = 0;
+  // Several games in flight: ESPN requests stay paced globally, database writes overlap.
+  const worker = async () => {
+    while (next < todo.length) {
+      const g = todo[next++];
+      try { await ingestBoxScore(s, g, opts); n++; }
+      catch (e) { failed++; console.warn(`box ${s.id}/${g.espn_id}: ${(e as Error).message}`); }
+      if (n % 100 === 0 && n) console.log(`${s.id}: ${n}/${todo.length} box scores`);
+    }
+  };
+  await Promise.all(Array.from({ length: 4 }, worker));
   console.log(`${s.id} ${seasonYear}: ${n} box scores ingested, ${failed} failed`);
 }
