@@ -77,7 +77,35 @@ export function GamePage() {
     );
   };
 
+  const cfbSide = (teamId: number, name: string) => {
+    const all = (box.data ?? []).filter((l) => l.team_id === teamId && !l.did_not_play);
+    const groups: [string, string, string[]][] = [
+      ['passing', 'Passing', ['completions', 'passingAttempts', 'passingYards', 'passingTouchdowns', 'interceptions']],
+      ['rushing', 'Rushing', ['rushingAttempts', 'rushingYards', 'rushingTouchdowns']],
+      ['receiving', 'Receiving', ['receptions', 'receivingYards', 'receivingTouchdowns']],
+      ['defensive', 'Defense', ['totalTackles', 'soloTackles', 'sacks', 'tacklesForLoss']],
+    ];
+    const short: Record<string, string> = { completions: 'CMP', passingAttempts: 'ATT', passingYards: 'YDS', passingTouchdowns: 'TD', interceptions: 'INT', rushingAttempts: 'CAR', rushingYards: 'YDS', rushingTouchdowns: 'TD', receptions: 'REC', receivingYards: 'YDS', receivingTouchdowns: 'TD', totalTackles: 'TKL', soloTackles: 'SOLO', sacks: 'SCK', tacklesForLoss: 'TFL' };
+    return (
+      <div className="panel">
+        <h3>{name}</h3>
+        {!all.length && <p className="muted">No box score yet.</p>}
+        {groups.map(([g, label, keys]) => {
+          const rows = all.filter((l) => l.stat_group === g);
+          if (!rows.length) return null;
+          return (
+            <div className="tblwrap" key={g} style={{ marginTop: 10 }}><table className="box">
+              <thead><tr><th>{label}</th>{keys.map((k) => <th key={k}>{short[k]}</th>)}</tr></thead>
+              <tbody>{rows.map((l, i) => <tr key={i}><td style={{ fontWeight: 600 }}>{l.players?.display_name}</td>{keys.map((k) => <td key={k}>{l.stats[k] ?? 0}</td>)}</tr>)}</tbody>
+            </table></div>
+          );
+        })}
+      </div>
+    );
+  };
+
   const side = (teamId: number, name: string) => {
+    if (sport === 'cfb') return cfbSide(teamId, name);
     if (!meta.hoops) return diamondSide(teamId, name);
     const lines = (box.data ?? []).filter((l) => l.team_id === teamId && !l.did_not_play);
     const t = (k: string) => lines.reduce((a, l) => a + (Number(l.stats[k]) || 0), 0);
@@ -140,7 +168,7 @@ export function GamePage() {
               <div style={{ flexBasis: `${pred.aWin * 100}%`, background: hc, justifyContent: 'flex-end' }}>{pct(pred.aWin)}</div>
             </div>
             <p className="muted sm" style={{ textAlign: 'center', margin: 0 }}>
-              Using today's ratings: {game.home_name} {meta.hoops ? Math.round(pred.aPts) : pred.aPts.toFixed(1)}, {game.away_name} {meta.hoops ? Math.round(pred.bPts) : pred.bPts.toFixed(1)}{meta.hoops ? ` in about ${Math.round(pred.poss)} possessions` : ' runs'}.
+              Using today's ratings: {game.home_name} {meta.hoops || sport === 'cfb' ? Math.round(pred.aPts) : pred.aPts.toFixed(1)}, {game.away_name} {meta.hoops || sport === 'cfb' ? Math.round(pred.bPts) : pred.bPts.toFixed(1)}{meta.hoops ? ` in about ${Math.round(pred.poss)} possessions` : sport === 'cfb' ? '' : ' runs'}.
               {final && <> {(pred.aWin >= .5) === homeWon ? ' The favorite won.' : ' Upset.'}</>}
             </p>
           </>

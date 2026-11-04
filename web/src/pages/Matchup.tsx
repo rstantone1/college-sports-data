@@ -79,9 +79,9 @@ export function MatchupPage() {
 
       <div className="panel" style={{ marginTop: 12 }}>
         <div className="score">
-          <span className="s" style={{ color: ca }}>{meta.hoops ? Math.round(p.aPts) : p.aPts.toFixed(1)}</span>
+          <span className="s" style={{ color: ca }}>{meta.hoops || sport === 'cfb' ? Math.round(p.aPts) : p.aPts.toFixed(1)}</span>
           <span className="muted" style={{ fontSize: 28 }}>–</span>
-          <span className="s" style={{ color: cb }}>{meta.hoops ? Math.round(p.bPts) : p.bPts.toFixed(1)}</span>
+          <span className="s" style={{ color: cb }}>{meta.hoops || sport === 'cfb' ? Math.round(p.bPts) : p.bPts.toFixed(1)}</span>
         </div>
         <div className="prob">
           <div style={{ flexBasis: `${shown * 100}%`, background: ca }}>{a.abbreviation} {pct(p.aWin)}</div>

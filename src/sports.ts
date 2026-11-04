@@ -58,7 +58,7 @@ export const SPORTS: Record<string, SportConfig> = {
   },
   cfb: {
     id: 'cfb', name: 'Football',
-    espnPath: 'football/college-football', espnGroups: '80',
+    espnPath: 'football/college-football', espnGroups: '80',   // 80 = FBS; FCS opponents are rated out via conference membership
     scoringUnit: 'drive', seasonLabel: 'calendar', regulationLength: 60,
     // ESPN football box scores don't report drives directly; the drives array in the summary does.
     // Ingest stores drive counts into stats.drives when available.

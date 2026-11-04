@@ -81,7 +81,7 @@ export async function computeRatings(s: SportConfig, seasonYear: number, opts: {
 
   // Home advantage starts at a sport prior and is re-estimated each iteration from the residual margin
   // in home games AFTER team strength is accounted for, so buy games don't inflate it.
-  const priorHCA = s.scoringUnit === 'possession' ? 1.6 : s.scoringUnit === 'drive' ? 0.25 : s.scoringUnit === 'inning' ? 0.15 : 0.1;
+  const priorHCA = s.scoringUnit === 'possession' ? 1.6 : s.scoringUnit === 'drive' ? 0.65 : s.scoringUnit === 'inning' ? 0.15 : 0.1;
   const homeGames = tg.filter((g) => g.home === 1);
   let hca = priorHCA;
 

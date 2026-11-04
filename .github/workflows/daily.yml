@@ -23,7 +23,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        sport: [mbb, wbb, bsb, sb]
+        sport: [mbb, wbb, bsb, sb, cfb]
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}

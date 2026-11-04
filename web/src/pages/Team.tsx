@@ -6,6 +6,7 @@ import { Back, Loading, ErrorBox } from '../components/Shell';
 import { LineChart } from '../components/Charts';
 import { f1, sign, pct, predict, league } from '../model';
 
+interface CfbLine { player_id: number; display_name: string; stat_group: string; games: number; totals: Record<string, number> }
 interface DiamondLine { player_id: number; display_name: string; g_bat: number; ab: number; r: number; h: number; rbi: number; bb: number; so: number; g_pit: number; ip: number; ha: number; er: number; bba: number; k: number; }
 interface PlayerLine { player_id: number; display_name: string; gp: number; gs: number; min: number; pts: number; reb: number; ast: number; stl: number; blk: number; tov: number; fgm: number; fga: number; tpm: number; tpa: number; ftm: number; fta: number; }
 
@@ -16,6 +17,8 @@ export function TeamPage() {
   const R = useRatings();
   const games = useAsync(() => restAll<Game>(`v_games?season_year=eq.${season}&sport_id=eq.${sport}&or=(home_team_id.eq.${id},away_team_id.eq.${id})&order=start_time.asc`), [id, sport, season]);
   const players = useAsync(() => meta.hoops ? rest<PlayerLine[]>(`mv_player_season?team_id=eq.${id}&season_year=eq.${season}&order=pts.desc`) : Promise.resolve([] as PlayerLine[]), [id, season, meta.hoops]);
+  const cfb = useAsync(() => sport === 'cfb' ? rest<CfbLine[]>(`mv_cfb_season?team_id=eq.${id}&season_year=eq.${season}`) : Promise.resolve([] as CfbLine[]), [id, season, sport]);
+  const moves = useAsync(() => meta.hoops ? rest<any[]>(`v_transfers?sport_id=eq.${sport}&season_year=eq.${season}&or=(to_team_id.eq.${id},from_team_id.eq.${id})&order=pts.desc.nullslast`) : Promise.resolve([] as any[]), [id, season, sport, meta.hoops]);
   const diamond = useAsync(() => !meta.hoops ? rest<DiamondLine[]>(`mv_diamond_season?team_id=eq.${id}&season_year=eq.${season}&order=h.desc.nullslast`) : Promise.resolve([] as DiamondLine[]), [id, season, meta.hoops]);
   const hist = useAsync(() => restAll<{ as_of: string; adj_em: number; rank: number }>(`ratings?select=as_of,adj_em,rank&team_id=eq.${id}&season_year=eq.${season}&order=as_of.asc`), [id, season]);
   const [tab, setTab] = useState<'sched' | 'roster'>('sched');
@@ -109,7 +112,7 @@ export function TeamPage() {
               </ul>
             )
           ) : (
-            meta.hoops ? <Roster rows={players.data ?? []} loading={players.loading} /> : <DiamondRoster rows={diamond.data ?? []} loading={diamond.loading} />
+            meta.hoops ? <Roster rows={players.data ?? []} loading={players.loading} /> : sport === 'cfb' ? <CfbRoster rows={cfb.data ?? []} loading={cfb.loading} /> : <DiamondRoster rows={diamond.data ?? []} loading={diamond.loading} />
           )}
         </div>
 
@@ -119,6 +122,23 @@ export function TeamPage() {
             <LineChart color={color === '#FFFFFF' ? '#0B1220' : color}
               points={(hist.data ?? []).map((h) => ({ x: fmtDate(h.as_of + 'T12:00:00'), y: Number(h.adj_em) }))} yLabel="Margin over time" />
           </div>
+          {meta.hoops && (moves.data?.length ?? 0) > 0 && (
+            <div className="panel">
+              <h3>Portal moves</h3>
+              {moves.data!.filter((m) => m.to_team_id === id).length > 0 && <p className="sm muted" style={{ margin: '0 0 4px' }}>Arrived</p>}
+              {moves.data!.filter((m) => m.to_team_id === id).map((m) => <p key={m.player_id} style={{ margin: '0 0 6px' }}><b>{m.display_name}</b> <span className="muted sm">from {m.from_team}{m.gp ? ` · ${(Number(m.pts) / m.gp).toFixed(1)} ppg` : ''}</span></p>)}
+              {moves.data!.filter((m) => m.from_team_id === id).length > 0 && <p className="sm muted" style={{ margin: '8px 0 4px' }}>Left</p>}
+              {moves.data!.filter((m) => m.from_team_id === id).map((m) => <p key={m.player_id} style={{ margin: '0 0 6px' }}><b>{m.display_name}</b> <span className="muted sm">to {m.to_team}{m.gp ? ` · ${(Number(m.pts) / m.gp).toFixed(1)} ppg` : ''}</span></p>)}
+              <Link to={`${base}/transfers`} style={{ color: 'var(--cool)', fontWeight: 600, fontSize: 14 }}>All transfers</Link>
+            </div>
+          )}
+          {meta.tourney && (
+            <div className="panel">
+              <h3>Tournament picture</h3>
+              <p className="muted sm">Odds of making the field, seed line, and projected record.</p>
+              <Link className="btn ghost" to={`${base}/tournament`}>Open tournament odds</Link>
+            </div>
+          )}
           <div className="panel">
             <h3>Try a matchup</h3>
             <p className="muted sm">See how {me.short_name} would do against anyone, anywhere.</p>
@@ -191,6 +211,31 @@ function DiamondRoster({ rows, loading }: { rows: DiamondLine[]; loading: boolea
           </table>
         )}
       </div>
+    </>
+  );
+}
+
+const CFB_GROUPS: [string, string, [string, string][]][] = [
+  ['passing', 'Passing', [['completions', 'CMP'], ['passingAttempts', 'ATT'], ['passingYards', 'YDS'], ['passingTouchdowns', 'TD'], ['interceptions', 'INT']]],
+  ['rushing', 'Rushing', [['rushingAttempts', 'CAR'], ['rushingYards', 'YDS'], ['rushingTouchdowns', 'TD'], ['longRushing', 'LONG']]],
+  ['receiving', 'Receiving', [['receptions', 'REC'], ['receivingYards', 'YDS'], ['receivingTouchdowns', 'TD'], ['longReception', 'LONG']]],
+  ['defensive', 'Defense', [['totalTackles', 'TKL'], ['soloTackles', 'SOLO'], ['sacks', 'SACK'], ['tacklesForLoss', 'TFL'], ['passesDefended', 'PD']]],
+  ['interceptions', 'Interceptions', [['interceptions', 'INT'], ['interceptionYards', 'YDS'], ['interceptionTouchdowns', 'TD']]],
+  ['kicking', 'Kicking', [['fieldGoalsMade', 'FGM'], ['fieldGoalAttempts', 'FGA'], ['extraPointsMade', 'XPM'], ['longFieldGoalMade', 'LONG']]],
+];
+function CfbRoster({ rows, loading }: { rows: CfbLine[]; loading: boolean }) {
+  const [grp, setGrp] = useState('passing');
+  if (loading) return <Loading rows={6} />;
+  if (!rows.length) return <p className="muted">Player stats appear after box scores are processed.</p>;
+  const def = CFB_GROUPS.find((g) => g[0] === grp) ?? CFB_GROUPS[0];
+  const list = rows.filter((r) => r.stat_group === def[0]).sort((a, b) => (Number(b.totals[def[2][2]?.[0]] ?? b.totals[def[2][0][0]]) || 0) - (Number(a.totals[def[2][2]?.[0]] ?? a.totals[def[2][0][0]]) || 0));
+  return (
+    <>
+      <div className="chips scroll">{CFB_GROUPS.map((g) => <button key={g[0]} className={`chip ${g[0] === def[0] ? 'on' : ''}`} onClick={() => setGrp(g[0])}>{g[1]}</button>)}</div>
+      <div className="tblwrap"><table className="box">
+        <thead><tr><th>Player</th><th>G</th>{def[2].map(([k, l]) => <th key={k}>{l}</th>)}</tr></thead>
+        <tbody>{list.map((r) => <tr key={r.player_id}><td style={{ fontWeight: 600 }}>{r.display_name}</td><td>{r.games}</td>{def[2].map(([k]) => <td key={k}>{r.totals[k] ?? '–'}</td>)}</tr>)}</tbody>
+      </table></div>
     </>
   );
 }

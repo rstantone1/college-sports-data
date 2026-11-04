@@ -13,7 +13,7 @@ export function Shell({ children }: { children: ReactNode }) {
     const m = sportMeta(s);
     const y = m.seasons.some((x) => x.year === y0) ? y0 : m.seasons[0].year;
     const rest = loc.pathname.split('/').slice(3).join('/');
-    const keep = /^(scores|matchup|ballot)?$/.test(rest) ? rest : '';
+    const keep = /^(scores|matchup|ballot|tournament|transfers|leaders)?$/.test(rest) ? rest : '';
     nav(`/${s}/${y}${keep ? '/' + keep : ''}`);
   };
 
@@ -37,6 +37,9 @@ export function Shell({ children }: { children: ReactNode }) {
             <NavLink end to={base}>Ratings</NavLink>
             <NavLink to={`${base}/scores`}>Scores</NavLink>
             <NavLink to={`${base}/matchup`}>Matchup</NavLink>
+            <NavLink to={`${base}/leaders`}>Leaders</NavLink>
+            {meta.tourney && <NavLink to={`${base}/tournament`}>Tournament</NavLink>}
+            {meta.hoops && <NavLink to={`${base}/transfers`}>Transfers</NavLink>}
             <NavLink to={`${base}/ballot`}>Your Top 25</NavLink>
             <NavLink to="/about">How it works</NavLink>
           </nav>

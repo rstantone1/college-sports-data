@@ -11,6 +11,9 @@ import { ScoresPage } from './pages/Scores';
 import { BallotPage } from './pages/Ballot';
 import { ConferencePage } from './pages/Conference';
 import { AboutPage } from './pages/About';
+import { TournamentPage } from './pages/Tournament';
+import { TransfersPage } from './pages/Transfers';
+import { LeadersPage } from './pages/Leaders';
 
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
@@ -22,6 +25,9 @@ createRoot(document.getElementById('root')!).render(
         <Route path="/:sport/:season/scores" element={<Shell><ScoresPage /></Shell>} />
         <Route path="/:sport/:season/matchup" element={<Shell><MatchupPage /></Shell>} />
         <Route path="/:sport/:season/ballot" element={<Shell><BallotPage /></Shell>} />
+        <Route path="/:sport/:season/tournament" element={<Shell><TournamentPage /></Shell>} />
+        <Route path="/:sport/:season/transfers" element={<Shell><TransfersPage /></Shell>} />
+        <Route path="/:sport/:season/leaders" element={<Shell><LeadersPage /></Shell>} />
         <Route path="/:sport/:season/team/:teamId" element={<Shell><TeamPage /></Shell>} />
         <Route path="/:sport/:season/game/:gameId" element={<Shell><GamePage /></Shell>} />
         <Route path="/:sport/:season/conf/:confId" element={<Shell><ConferencePage /></Shell>} />

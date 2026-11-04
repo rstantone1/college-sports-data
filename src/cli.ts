@@ -38,6 +38,8 @@ async function main() {
       await teamsFor(s, y);
       await gamesFor(s, y, { refreshDays: 3 });
       await boxFor(s, y, { plays: args.plays === '1' });
+      // Official rosters (height, class, hometown; and players who haven't appeared in a box score yet). ESPN sports only.
+      if (!isNcaa(s)) { try { await ingestRosters(s, y); } catch (e) { console.warn('rosters skipped:', (e as Error).message); } }
       const r = await computeRatings(s, y);
       // Off-season: stamp ratings with the last game date instead of today, so history doesn't fill with copies.
       const lastGame = (await q<{ d: string | null }>(`select max(start_time)::date::text d from games where sport_id=$1 and season_year=$2 and completed`, [s.id, y]))[0]?.d;

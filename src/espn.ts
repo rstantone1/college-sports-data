@@ -62,9 +62,10 @@ export const espn = {
 export function parseStat(name: string, display: string): Record<string, number> {
   const out: Record<string, number> = {};
   if (display == null || display === '' || display === '--') return out;
-  if (name.includes('-') && display.includes('-')) {
-    const [a, b] = name.split('-');
-    const [x, y] = display.split('-').map(Number);
+  const sep = name.includes('/') && display.includes('/') ? '/' : name.includes('-') && display.includes('-') ? '-' : null;
+  if (sep) {
+    const [a, b] = name.split(sep);
+    const [x, y] = display.split(sep).map(Number);
     if (Number.isFinite(x)) out[a] = x;
     if (Number.isFinite(y)) out[b] = y;
     return out;

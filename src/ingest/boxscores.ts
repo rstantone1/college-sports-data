@@ -90,6 +90,7 @@ export async function ingestBoxScore(s: SportConfig, gameRow: { id: number; espn
     const drives: any[] = sum?.drives?.previous ?? [];
     const count = new Map<number, number>();
     for (const d of drives) {
+      if (/END OF (HALF|GAME)/i.test(d.result ?? '')) continue;   // kneel-downs aren't real possessions
       const tid = teamIds.get(String(d.team?.id));
       if (tid) count.set(tid, (count.get(tid) ?? 0) + 1);
     }
@@ -108,7 +109,7 @@ export async function ingestBoxScore(s: SportConfig, gameRow: { id: number; espn
     const tid = teamIds.get(String(side.team?.id));
     if (!tid) continue;
     for (const group of side.statistics ?? []) {
-      for (const a of group.athletes ?? []) if (a.athlete?.id) rows.push({ tid, a, group: group.type ?? 'box', keys: group.keys ?? group.names ?? [] });
+      for (const a of group.athletes ?? []) if (a.athlete?.id) rows.push({ tid, a, group: group.type ?? group.name ?? 'box', keys: group.keys ?? group.names ?? [] });
     }
   }
   if (rows.length) {
