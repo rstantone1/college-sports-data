@@ -56,8 +56,8 @@ async function main() {
       const left = await q<{ c: string }>(`select count(*) c from games where sport_id=$1 and season_year=$2 and completed and box_fetched_at is null`, [s.id, y]);
       const n = Number(left[0].c);
       console.log(`${s.id} ${y}: ${n} box scores outstanding`);
-      if (n === 0) break;
-      await boxFor(s, y, { plays: args.plays === '1', limit: Number(args.limit ?? 2500) });
+      if (n > 0) await boxFor(s, y, { plays: args.plays === '1', limit: Number(args.limit ?? 2500) });
+      // Always re-rate last season so model improvements reach the archive too (cheap: a second or two).
       const last = await q<{ d: string }>(`select max(start_time)::date::text d from games where sport_id=$1 and season_year=$2 and completed`, [s.id, y]);
       const r = await computeRatings(s, y);
       await saveRatings(s, y, last[0].d, r.ratings);

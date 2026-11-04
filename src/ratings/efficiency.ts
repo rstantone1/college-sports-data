@@ -57,6 +57,9 @@ export async function computeRatings(s: SportConfig, seasonYear: number, opts: {
       uH = uA = u;
     }
     if (uH == null || uA == null || uH <= 0 || uA <= 0) { skipped++; continue; }
+    if (s.scoringUnit === 'inning') {   // run-rule games count as a full game; extra innings count as played
+      uH = Math.max(uH, s.regulationLength); uA = Math.max(uA, s.regulationLength);
+    }
     // OT / extra innings: scale tempo back to regulation for the tempo stat only.
     let regFactor = 1;
     if (s.scoringUnit === 'possession' && r.periods) {
@@ -136,6 +139,13 @@ export async function computeRatings(s: SportConfig, seasonYear: number, opts: {
       nextO.set(t, o); nextD.set(t, d); nextT.set(t, tp);
     }
     for (const t of teams) { adjO.set(t, nextO.get(t)!); adjD.set(t, nextD.get(t)!); adjT.set(t, nextT.get(t)!); }
+    // Re-center every pass: the average offense and the average defense must both equal the league average.
+    // Without this, every offense can drift up while every defense drifts down and the numbers stop meaning anything.
+    const mO = [...adjO.values()].reduce((a, b) => a + b, 0) / teams.length, mD = [...adjD.values()].reduce((a, b) => a + b, 0) / teams.length;
+    for (const t of teams) {
+      if (additive) { adjO.set(t, adjO.get(t)! + (L - mO)); adjD.set(t, adjD.get(t)! + (L - mD)); }
+      else { adjO.set(t, adjO.get(t)! * (L / mO)); adjD.set(t, adjD.get(t)! * (L / mD)); }
+    }
     if (homeGames.length) {
       let resid = 0;
       for (const g of homeGames) {
