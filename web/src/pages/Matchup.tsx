@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { useCtx, useRatings, teamColor } from '../hooks';
+import { useCtx, useRatings, distinctPair } from '../hooks';
 import { Loading, ErrorBox } from '../components/Shell';
 import { predict, league, pct, f1 } from '../model';
 import type { Rating } from '../api';
@@ -32,7 +32,7 @@ export function MatchupPage() {
     const i = Math.floor(Math.random() * pool.length); let j = Math.floor(Math.random() * pool.length); if (j === i) j = (j + 1) % pool.length;
     const n = new URLSearchParams(sp); n.set('a', String(pool[i].team_id)); n.set('b', String(pool[j].team_id)); n.set('site', '0'); setSp(n, { replace: true });
   };
-  const ca = teamColor(a.color, '#2453D6'), cb = teamColor(b.color === a.color ? b.alt_color : b.color, '#E4312B');
+  const [ca, cb] = distinctPair(a.color, b.color, b.alt_color);
   const fav = p.aWin >= .5 ? a : b, favP = Math.max(p.aWin, 1 - p.aWin), spread = Math.abs(p.margin);
 
   const Pick = ({ r, k }: { r: Rating; k: 'a' | 'b' }) => (

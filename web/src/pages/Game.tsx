@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { rest, restAll, type Game } from '../api';
-import { useAsync, useCtx, useRatings, teamColor, fmtDate, fmtTime } from '../hooks';
+import { useAsync, useCtx, useRatings, distinctPair, fmtDate, fmtTime } from '../hooks';
 import { Back, Loading, ErrorBox } from '../components/Shell';
 import { FlowChart, ShotChart } from '../components/Charts';
 import { predict, league, pct } from '../model';
@@ -28,9 +28,10 @@ export function GamePage() {
       const [mm, ss] = (p.clock ?? '0:0').split(':').map(Number);
       const left = (mm || 0) + (ss || 0) / 60;
       const t = p.period <= regPer ? (p.period - 1) * perLen + (perLen - left) : regPer * perLen + (p.period - regPer - 1) * 5 + (5 - left);
-      out.push({ t, m: (p.home_score ?? 0) - (p.away_score ?? 0) });
+      if (Number.isFinite(t)) out.push({ t, m: (p.home_score ?? 0) - (p.away_score ?? 0) });
     }
-    return out;
+    // Plays can arrive slightly out of order; draw them in game-clock order.
+    return out.map((x, i) => ({ ...x, i })).sort((a, b) => a.t - b.t || a.i - b.i);
   }, [plays.data, regPer, perLen]);
 
   const shots = useMemo(() => {
@@ -47,7 +48,8 @@ export function GamePage() {
   if (g.loading || R.loading) return <Loading />;
   if (g.error || !game) return <ErrorBox msg={g.error ?? 'Game not found.'} />;
 
-  const hc = teamColor(game.home_color, '#2453D6'), ac = teamColor(game.away_color, '#E4312B');
+  const A0 = (R.data ?? []).find((r) => r.team_id === game.away_team_id);
+  const [hc, ac] = distinctPair(game.home_color, game.away_color, A0?.alt_color);
   const byId = new Map((R.data ?? []).map((r) => [r.team_id, r]));
   const H = byId.get(game.home_team_id), A = byId.get(game.away_team_id);
   const pred = H && A ? predict(H, A, league(R.data!), game.neutral_site ? 0 : 1, sport) : null;

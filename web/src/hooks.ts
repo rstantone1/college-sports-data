@@ -31,6 +31,19 @@ export function useRatings() {
 
 export const teamColor = (c?: string | null, fallback = '#2453D6') => (c ? `#${c.replace('#', '')}` : fallback);
 
+// Two team colors that can be told apart: if they're too close, the second team uses its alternate (or a fallback).
+export function distinctPair(a?: string | null, b?: string | null, bAlt?: string | null): [string, string] {
+  const ca = teamColor(a, '#2453D6');
+  const rgb = (h: string) => { const x = h.replace('#', ''); return [0, 2, 4].map((i) => parseInt(x.slice(i, i + 2), 16)); };
+  const far = (x: string, y: string) => { const [p, q] = [rgb(x), rgb(y)]; return Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]) > 90; };
+  for (const c of [b, bAlt, 'E4312B', '147A4B']) {
+    if (!c) continue;
+    const cc = teamColor(c);
+    if (far(ca, cc) && !/^#?(f{6}|ffffff)$/i.test(cc)) return [ca, cc];
+  }
+  return [ca, '#E4312B'];
+}
+
 // Readable text on a team color.
 export function onColor(hex: string) {
   const h = hex.replace('#', '');

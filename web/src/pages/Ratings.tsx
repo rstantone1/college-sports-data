@@ -59,7 +59,7 @@ export function RatingsPage() {
         {avgGp < 6 && <> <b>Early season:</b> teams have about {avgGp.toFixed(1)} games, so ratings lean on last season until more games are played.</>}
       </p>
 
-      <div className="chips" role="group" aria-label="Conference">
+      <div className="chips scroll" role="group" aria-label="Conference">
         <button className={`chip ${conf === 'All' ? 'on' : ''}`} onClick={() => setConf('All')}>All {data.length}</button>
         {confs.map(([c]) => (
           <button key={c} className={`chip ${conf === c ? 'on' : ''}`} onClick={() => setConf(c)}>{c}</button>
