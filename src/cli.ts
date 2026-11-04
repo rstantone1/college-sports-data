@@ -26,6 +26,7 @@ async function main() {
     // Full daily refresh for one sport: schedule/scores, new box scores, ratings.
     case 'daily': {
       const s = sport(args.sport); const y = season(s.id);
+      await ingestTeams(s, y);
       await ingestGames(s, y, { refreshDays: 3 });
       await ingestBoxScores(s, y, { plays: args.plays === '1' });
       const r = await computeRatings(s, y);

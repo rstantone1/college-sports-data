@@ -1,0 +1,40 @@
+name: Daily refresh
+
+# Pulls new scores, schedules and box scores, then recomputes ratings.
+# Runs every 3 hours in season. Each sport is its own job so one failure doesn't block the others.
+on:
+  schedule:
+    - cron: "15 */3 * * *"
+  workflow_dispatch:
+    inputs:
+      sports:
+        description: "Comma-separated sport ids (default: in-season sports)"
+        required: false
+        default: "mbb,wbb"
+
+concurrency:
+  group: daily-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        sport: [mbb, wbb]
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+      FETCH_DELAY_MS: "350"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsx src/cli.ts migrate
+      - run: npx tsx src/cli.ts daily --sport=${{ matrix.sport }} --plays=1
+      - run: npx tsx src/cli.ts top --sport=${{ matrix.sport }} --n=25
