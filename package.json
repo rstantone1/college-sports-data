@@ -1,0 +1,26 @@
+{
+  "name": "college-sports-data",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Cross-sport college ratings, rosters and schedule data layer. One adapter, every sport.",
+  "scripts": {
+    "db:migrate": "tsx src/cli.ts migrate",
+    "ingest:teams": "tsx src/cli.ts ingest:teams",
+    "ingest:games": "tsx src/cli.ts ingest:games",
+    "ingest:box": "tsx src/cli.ts ingest:box",
+    "ingest:rosters": "tsx src/cli.ts ingest:rosters",
+    "ratings": "tsx src/cli.ts ratings",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/pg": "^8.11.10",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

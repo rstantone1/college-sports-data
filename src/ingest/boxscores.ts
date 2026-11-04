@@ -1,0 +1,170 @@
+import { q, one } from '../db.js';
+import { espn, parseStat } from '../espn.js';
+import type { SportConfig } from '../sports.js';
+
+const playerCache = new Map<string, number>();
+async function playerId(s: SportConfig, a: any): Promise<number | null> {
+  if (!a?.id) return null;
+  const k = `${s.id}:${a.id}`;
+  if (playerCache.has(k)) return playerCache.get(k)!;
+  const row = await one<{ id: number }>(
+    `insert into players(sport_id, espn_id, display_name, first_name, last_name) values ($1,$2,$3,$4,$5)
+     on conflict (sport_id, espn_id) do update set display_name=excluded.display_name,
+       first_name=coalesce(excluded.first_name, players.first_name), last_name=coalesce(excluded.last_name, players.last_name)
+     returning id`,
+    [s.id, String(a.id), a.displayName ?? a.shortName ?? `Player ${a.id}`, a.firstName ?? null, a.lastName ?? null]);
+  playerCache.set(k, row!.id);
+  return row!.id;
+}
+
+// Flatten ESPN's team statistics list (flat or grouped) into {key: number}.
+function teamStats(statistics: any[]): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const st of statistics ?? []) {
+    if (Array.isArray(st.stats)) {
+      for (const inner of st.stats) Object.assign(out, parseStat(inner.name, inner.displayValue ?? String(inner.value ?? '')));
+    } else if (st.name) {
+      Object.assign(out, parseStat(st.name, st.displayValue ?? String(st.value ?? '')));
+    }
+  }
+  return out;
+}
+
+function playerStats(keys: string[], values: string[]): Record<string, number> {
+  const out: Record<string, number> = {};
+  keys.forEach((k, i) => {
+    const v = values[i];
+    if (k === 'fullInnings.partInnings') {           // pitching IP like "6.1" = 6 and 1/3
+      const [f, p] = String(v ?? '').split('.').map(Number);
+      if (Number.isFinite(f)) out['inningsPitched'] = f + (Number.isFinite(p) ? p / 3 : 0);
+      return;
+    }
+    Object.assign(out, parseStat(k, v));
+  });
+  return out;
+}
+
+export interface BoxOptions { plays?: boolean }
+
+export async function ingestBoxScore(s: SportConfig, gameRow: { id: number; espn_id: string }, opts: BoxOptions = {}) {
+  const sum = await espn.summary(s, gameRow.espn_id);
+  const comp = sum?.header?.competitions?.[0];
+  const competitors: any[] = comp?.competitors ?? [];
+  const teamIds = new Map<string, number>();
+  for (const c of competitors) {
+    const t = await one<{ id: number }>(`select id from teams where sport_id=$1 and espn_id=$2`, [s.id, String(c.team?.id ?? c.id)]);
+    if (t) teamIds.set(String(c.team?.id ?? c.id), t.id);
+  }
+
+  // Game-level details that only the summary has.
+  const gi = sum?.gameInfo;
+  await q(
+    `update games set venue_name=coalesce($2, venue_name), venue_city=coalesce($3, venue_city), venue_state=coalesce($4, venue_state),
+       attendance=coalesce($5, attendance), periods=coalesce($6, periods), season_type=coalesce($7, season_type),
+       neutral_site=coalesce($8, neutral_site), conference_game=coalesce($9, conference_game) where id=$1`,
+    [gameRow.id, gi?.venue?.fullName ?? null, gi?.venue?.address?.city ?? null, gi?.venue?.address?.state ?? null,
+     gi?.attendance ?? comp?.attendance ?? null,
+     competitors[0]?.linescores?.length ?? null, sum?.header?.season?.type ?? null,
+     comp?.neutralSite ?? null, comp?.conferenceCompetition ?? null]);
+
+  // Team box score.
+  for (const t of sum?.boxscore?.teams ?? []) {
+    const tid = teamIds.get(String(t.team?.id));
+    if (!tid) continue;
+    const stats = teamStats(t.statistics);
+    const c = competitors.find((x) => String(x.team?.id ?? x.id) === String(t.team.id));
+    if (c?.linescores?.length) {
+      // Diamond sports: innings batted = linescore entries (handles walk-offs and 7-inning run rules).
+      if (s.scoringUnit === 'inning') stats['inningsBatted'] = c.linescores.length;
+      stats['periods'] = c.linescores.length;
+    }
+    if (Object.keys(stats).length === 0) continue;
+    await q(
+      `insert into game_team_stats(game_id, team_id, stats) values ($1,$2,$3)
+       on conflict (game_id, team_id) do update set stats=excluded.stats`,
+      [gameRow.id, tid, JSON.stringify(stats)]);
+  }
+
+  // Football drives -> stats.drives per team.
+  if (s.scoringUnit === 'drive') {
+    const drives: any[] = sum?.drives?.previous ?? [];
+    const count = new Map<number, number>();
+    for (const d of drives) {
+      const tid = teamIds.get(String(d.team?.id));
+      if (tid) count.set(tid, (count.get(tid) ?? 0) + 1);
+    }
+    for (const [tid, n] of count) {
+      await q(`insert into game_team_stats(game_id, team_id, stats) values ($1,$2,$3)
+               on conflict (game_id, team_id) do update set stats = game_team_stats.stats || excluded.stats`,
+        [gameRow.id, tid, JSON.stringify({ drives: n })]);
+    }
+  }
+
+  // Player box score (+ roster membership for the season).
+  const seasonYear = sum?.header?.season?.year;
+  for (const side of sum?.boxscore?.players ?? []) {
+    const tid = teamIds.get(String(side.team?.id));
+    if (!tid) continue;
+    for (const group of side.statistics ?? []) {
+      const keys: string[] = group.keys ?? group.names ?? [];
+      const groupName: string = group.type ?? 'box';
+      for (const a of group.athletes ?? []) {
+        const pid = await playerId(s, a.athlete);
+        if (!pid) continue;
+        const dnp = !!a.didNotPlay || (a.stats ?? []).length === 0;
+        const stats = dnp ? {} : playerStats(keys, a.stats);
+        await q(
+          `insert into game_player_stats(game_id, team_id, player_id, starter, did_not_play, stat_group, stats)
+           values ($1,$2,$3,$4,$5,$6,$7)
+           on conflict (game_id, player_id, stat_group) do update set team_id=excluded.team_id, starter=excluded.starter,
+             did_not_play=excluded.did_not_play, stats=excluded.stats`,
+          [gameRow.id, tid, pid, a.starter ?? null, dnp, groupName, JSON.stringify(stats)]);
+        if (seasonYear) {
+          await q(
+            `insert into rosters(player_id, team_id, season_year, jersey, position)
+             values ($1,$2,$3,$4,$5)
+             on conflict (player_id, team_id, season_year) do update set
+               jersey=coalesce(excluded.jersey, rosters.jersey), position=coalesce(excluded.position, rosters.position), last_seen=now()`,
+            [pid, tid, seasonYear, a.athlete?.jersey ?? null, a.athlete?.position?.abbreviation ?? null]);
+        }
+      }
+    }
+  }
+
+  // Play-by-play (basketball has shot coordinates). Off by default: big.
+  if (opts.plays && Array.isArray(sum?.plays) && sum.plays.length) {
+    const rows: any[] = [];
+    for (const p of sum.plays) {
+      const tid = p.team?.id ? teamIds.get(String(p.team.id)) ?? null : null;
+      rows.push([gameRow.id, Number(p.sequenceNumber ?? p.id), p.period?.number ?? null, p.clock?.displayValue ?? null, tid,
+        p.type?.text ?? null, p.text ?? null, !!p.scoringPlay, p.scoreValue ?? null, p.homeScore ?? null, p.awayScore ?? null,
+        p.coordinate?.x ?? null, p.coordinate?.y ?? null,
+        JSON.stringify((p.participants ?? []).map((x: any) => ({ espn_id: x.athlete?.id })))]);
+    }
+    // batched multi-row insert
+    const cols = 14;
+    for (let i = 0; i < rows.length; i += 200) {
+      const chunk = rows.slice(i, i + 200);
+      const values = chunk.map((_, r) => `(${Array.from({ length: cols }, (_, c) => `$${r * cols + c + 1}`).join(',')})`).join(',');
+      await q(
+        `insert into plays(game_id, sequence, period, clock, team_id, play_type, description, scoring_play, score_value, home_score, away_score, x, y, participants)
+         values ${values} on conflict (game_id, sequence) do nothing`, chunk.flat());
+    }
+  }
+
+  await q(`update games set box_fetched_at=now() where id=$1`, [gameRow.id]);
+}
+
+// Box scores for every completed game that doesn't have one yet.
+export async function ingestBoxScores(s: SportConfig, seasonYear: number, opts: BoxOptions & { limit?: number } = {}) {
+  const todo = await q<{ id: number; espn_id: string }>(
+    `select id, espn_id from games where sport_id=$1 and season_year=$2 and completed and box_fetched_at is null
+     order by start_time limit $3`, [s.id, seasonYear, opts.limit ?? 100000]);
+  let n = 0, failed = 0;
+  for (const g of todo) {
+    try { await ingestBoxScore(s, g, opts); n++; }
+    catch (e) { failed++; console.warn(`box ${s.id}/${g.espn_id}: ${(e as Error).message}`); }
+    if (n % 100 === 0 && n) console.log(`${s.id}: ${n}/${todo.length} box scores`);
+  }
+  console.log(`${s.id} ${seasonYear}: ${n} box scores ingested, ${failed} failed`);
+}
