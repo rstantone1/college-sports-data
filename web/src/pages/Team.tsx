@@ -6,15 +6,17 @@ import { Back, Loading, ErrorBox } from '../components/Shell';
 import { LineChart } from '../components/Charts';
 import { f1, sign, pct, predict, league } from '../model';
 
+interface DiamondLine { player_id: number; display_name: string; g_bat: number; ab: number; r: number; h: number; rbi: number; bb: number; so: number; g_pit: number; ip: number; ha: number; er: number; bba: number; k: number; }
 interface PlayerLine { player_id: number; display_name: string; gp: number; gs: number; min: number; pts: number; reb: number; ast: number; stl: number; blk: number; tov: number; fgm: number; fga: number; tpm: number; tpa: number; ftm: number; fta: number; }
 
 export function TeamPage() {
   const { teamId } = useParams();
   const id = Number(teamId);
-  const { sport, season, base } = useCtx();
+  const { sport, season, base, meta } = useCtx();
   const R = useRatings();
   const games = useAsync(() => restAll<Game>(`v_games?season_year=eq.${season}&sport_id=eq.${sport}&or=(home_team_id.eq.${id},away_team_id.eq.${id})&order=start_time.asc`), [id, sport, season]);
-  const players = useAsync(() => rest<PlayerLine[]>(`mv_player_season?team_id=eq.${id}&season_year=eq.${season}&order=pts.desc`), [id, season]);
+  const players = useAsync(() => meta.hoops ? rest<PlayerLine[]>(`mv_player_season?team_id=eq.${id}&season_year=eq.${season}&order=pts.desc`) : Promise.resolve([] as PlayerLine[]), [id, season, meta.hoops]);
+  const diamond = useAsync(() => !meta.hoops ? rest<DiamondLine[]>(`mv_diamond_season?team_id=eq.${id}&season_year=eq.${season}&order=h.desc.nullslast`) : Promise.resolve([] as DiamondLine[]), [id, season, meta.hoops]);
   const hist = useAsync(() => restAll<{ as_of: string; adj_em: number; rank: number }>(`ratings?select=as_of,adj_em,rank&team_id=eq.${id}&season_year=eq.${season}&order=as_of.asc`), [id, season]);
   const [tab, setTab] = useState<'sched' | 'roster'>('sched');
 
@@ -27,6 +29,7 @@ export function TeamPage() {
   if (!me) return <><Back /><div className="panel empty">This team has no rating this season yet.</div></>;
 
   const color = teamColor(me.color, '#0B1220');
+  const dp = meta.hoops ? 1 : 2;
   const ink = onColor(color);
   const done = (games.data ?? []).filter((g) => g.completed && g.home_score != null);
   const wins = done.filter((g) => (g.home_team_id === id ? g.home_score! > g.away_score! : g.away_score! > g.home_score!)).length;
@@ -57,10 +60,10 @@ export function TeamPage() {
       </section>
 
       <div className="cards" style={{ marginBottom: 16 }}>
-        <div className="card"><div className="k">Margin</div><div className="v" style={{ color: me.adj_em >= 0 ? 'var(--win)' : 'var(--hot)' }}>{sign(me.adj_em)}</div><div className="r">per 100 possessions</div></div>
-        <div className="card"><div className="k">Offense</div><div className="v">{f1(me.adj_off)}</div><div className="r">#{me.off_rank} nationally</div></div>
-        <div className="card"><div className="k">Defense</div><div className="v">{f1(me.adj_def)}</div><div className="r">#{me.def_rank} nationally</div></div>
-        <div className="card"><div className="k">Pace</div><div className="v">{f1(me.tempo)}</div><div className="r">possessions / game</div></div>
+        <div className="card"><div className="k">Margin</div><div className="v" style={{ color: me.adj_em >= 0 ? 'var(--win)' : 'var(--hot)' }}>{sign(me.adj_em, dp)}</div><div className="r">{meta.effLabel}</div></div>
+        <div className="card"><div className="k">Offense</div><div className="v">{me.adj_off.toFixed(dp)}</div><div className="r">#{me.off_rank} nationally</div></div>
+        <div className="card"><div className="k">{meta.hoops ? 'Defense' : 'Run prevention'}</div><div className="v">{me.adj_def.toFixed(dp)}</div><div className="r">#{me.def_rank} nationally</div></div>
+        {meta.hoops && <div className="card"><div className="k">Pace</div><div className="v">{f1(me.tempo)}</div><div className="r">possessions / game</div></div>}
         {upcoming.length > 0 && <div className="card"><div className="k">Projected record</div><div className="v">{Math.round(projW)}-{totalG - Math.round(projW)}</div><div className="r">{wins}-{done.length - wins} so far</div></div>}
       </div>
 
@@ -106,7 +109,7 @@ export function TeamPage() {
               </ul>
             )
           ) : (
-            <Roster rows={players.data ?? []} loading={players.loading} />
+            meta.hoops ? <Roster rows={players.data ?? []} loading={players.loading} /> : <DiamondRoster rows={diamond.data ?? []} loading={diamond.loading} />
           )}
         </div>
 
@@ -153,6 +156,40 @@ function Roster({ rows, loading }: { rows: PlayerLine[]; loading: boolean }) {
             ))}
           </tbody>
         </table>
+      </div>
+    </>
+  );
+}
+
+function DiamondRoster({ rows, loading }: { rows: DiamondLine[]; loading: boolean }) {
+  const [view, setView] = useState<'bat' | 'pit'>('bat');
+  if (loading) return <Loading rows={6} />;
+  if (!rows.length) return <p className="muted">Player stats appear after box scores are processed.</p>;
+  const N = (v: any) => Number(v) || 0;
+  const avg = (h: number, ab: number) => (N(ab) ? (N(h) / N(ab)).toFixed(3).replace(/^0/, '') : '–');
+  const obp = (r: DiamondLine) => { const d = N(r.ab) + N(r.bb); return d ? ((N(r.h) + N(r.bb)) / d).toFixed(3).replace(/^0/, '') : '–'; };
+  const era = (r: DiamondLine, inn: number) => (N(r.ip) ? ((N(r.er) * inn) / N(r.ip)).toFixed(2) : '–');
+  const ipFmt = (v: number) => { const x = N(v); const f = Math.floor(x + 1e-6); return `${f}.${Math.round((x - f) * 3)}`; };
+  const bat = rows.filter((r) => N(r.ab) + N(r.bb) > 0).sort((a, b) => N(b.ab) - N(a.ab));
+  const pit = rows.filter((r) => N(r.ip) > 0).sort((a, b) => N(b.ip) - N(a.ip));
+  return (
+    <>
+      <div className="chips">
+        <button className={`chip ${view === 'bat' ? 'on' : ''}`} onClick={() => setView('bat')}>Hitting</button>
+        <button className={`chip ${view === 'pit' ? 'on' : ''}`} onClick={() => setView('pit')}>Pitching</button>
+      </div>
+      <div className="tblwrap">
+        {view === 'bat' ? (
+          <table className="box">
+            <thead><tr><th>Player</th><th>G</th><th>AB</th><th>R</th><th>H</th><th>RBI</th><th>BB</th><th>K</th><th>AVG</th><th>OBP</th></tr></thead>
+            <tbody>{bat.map((r) => <tr key={r.player_id}><td style={{ fontWeight: 600 }}>{r.display_name}</td><td>{r.g_bat}</td><td>{N(r.ab)}</td><td>{N(r.r)}</td><td>{N(r.h)}</td><td>{N(r.rbi)}</td><td>{N(r.bb)}</td><td>{N(r.so)}</td><td style={{ fontWeight: 700 }}>{avg(r.h, r.ab)}</td><td>{obp(r)}</td></tr>)}</tbody>
+          </table>
+        ) : (
+          <table className="box">
+            <thead><tr><th>Pitcher</th><th>G</th><th>IP</th><th>H</th><th>ER</th><th>BB</th><th>K</th><th>ERA</th></tr></thead>
+            <tbody>{pit.map((r) => <tr key={r.player_id}><td style={{ fontWeight: 600 }}>{r.display_name}</td><td>{r.g_pit}</td><td>{ipFmt(r.ip)}</td><td>{N(r.ha)}</td><td>{N(r.er)}</td><td>{N(r.bba)}</td><td>{N(r.k)}</td><td style={{ fontWeight: 700 }}>{era(r, 9)}</td></tr>)}</tbody>
+          </table>
+        )}
       </div>
     </>
   );

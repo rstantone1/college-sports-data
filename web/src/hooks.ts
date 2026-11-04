@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { ratingsFor, type Rating } from './api';
+import { sportMeta } from './sports';
 
 export function useCtx() {
   const p = useParams();
-  const sport = p.sport === 'wbb' ? 'wbb' : 'mbb';
-  const season = Number(p.season) || 2027;
-  return { sport, season, base: `/${sport}/${season}` };
+  const meta = sportMeta(p.sport);
+  const sport = meta.id;
+  const season = Number(p.season) || meta.seasons[0].year;
+  return { sport, season, meta, base: `/${sport}/${season}` };
 }
 
 export function useAsync<T>(fn: () => Promise<T>, deps: any[]): { data: T | undefined; error: string | null; loading: boolean } {

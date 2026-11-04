@@ -61,7 +61,7 @@ export function ConferencePage() {
                   <td className="rk">{i + 1}</td>
                   <td className="l"><TeamCell name={x.t.short_name} logo={x.t.logo_url} color={x.t.color} /></td>
                   <td className="num">{x.t.rank}</td>
-                  <td className="num" style={{ color: x.t.adj_em >= 0 ? 'var(--win)' : 'var(--hot)' }}>{sign(x.t.adj_em)}</td>
+                  <td className="num" style={{ color: x.t.adj_em >= 0 ? 'var(--win)' : 'var(--hot)' }}>{sign(x.t.adj_em, x.t.sport_id === 'bsb' || x.t.sport_id === 'sb' ? 2 : 1)}</td>
                   {anyConfGames && <><td className="num">{x.w}-{x.l}</td><td className="num" style={{ fontSize: 18 }}>{x.projW.toFixed(1)}-{x.projL.toFixed(1)}</td></>}
                   <td className="hide-sm num">{f1(x.t.adj_off)}</td><td className="hide-sm num">{f1(x.t.adj_def)}</td>
                 </tr>

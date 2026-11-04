@@ -8,7 +8,7 @@ import { f1, sign } from '../model';
 type Key = 'rank' | 'adj_em' | 'adj_off' | 'adj_def' | 'tempo' | 'games_played';
 
 export function RatingsPage() {
-  const { sport, season, base } = useCtx();
+  const { sport, season, base, meta } = useCtx();
   const { data, error, loading } = useRatings();
   const asOf = data?.[0]?.as_of;
   const prev = useAsync(() => (asOf ? previousRanks(sport, season, asOf) : Promise.resolve(new Map<number, number>())), [sport, season, asOf]);
@@ -48,15 +48,15 @@ export function RatingsPage() {
       {label}{sort.k === k ? (sort.dir === 1 ? ' ↑' : ' ↓') : ''}
     </th>
   );
-  const sportName = sport === 'mbb' ? "Men's" : "Women's";
+  const dp = meta.hoops ? 1 : 2;
 
   return (
     <>
-      <h1>{sportName} basketball ratings</h1>
+      <h1>{meta.long} ratings</h1>
       <p className="sub">
-        Every Division I team, adjusted for opponent and venue. Margin is points better than an average team per 100 possessions.
+        Every Division I team, adjusted for opponent and venue. Margin is how many {meta.pointWord} better than an average team a team is, in {meta.effLabel}.
         Updated {asOf ? new Date(asOf + 'T12:00:00').toLocaleDateString(undefined, { month: 'long', day: 'numeric' }) : ''}.
-        {avgGp < 6 && <> <b>Early season:</b> teams have about {avgGp.toFixed(1)} games, so ratings lean toward average until more games are played.</>}
+        {avgGp < 6 && <> <b>Early season:</b> teams have about {avgGp.toFixed(1)} games, so ratings lean on last season until more games are played.</>}
       </p>
 
       <div className="chips" role="group" aria-label="Conference">
@@ -83,7 +83,7 @@ export function RatingsPage() {
                 <th className="hide-sm" style={{ cursor: 'default' }}></th>
                 {th('adj_off', 'Offense')}
                 {th('adj_def', 'Defense')}
-                {th('tempo', 'Pace', 'hide-sm')}
+                {meta.hoops && th('tempo', 'Pace', 'hide-sm')}
               </tr>
             </thead>
             <tbody>
@@ -97,13 +97,13 @@ export function RatingsPage() {
                     <td className="l"><TeamCell name={r.short_name} logo={r.logo_url} color={r.color} /></td>
                     <td className="l hide-sm muted">{r.conference_short}</td>
                     <td className="hide-sm num">{r.games_played}</td>
-                    <td className="num" style={{ fontSize: 18, color: r.adj_em >= 0 ? 'var(--win)' : 'var(--hot)' }}>{sign(r.adj_em)}</td>
+                    <td className="num" style={{ fontSize: 18, color: r.adj_em >= 0 ? 'var(--win)' : 'var(--hot)' }}>{sign(r.adj_em, dp)}</td>
                     <td className="hide-sm" style={{ width: 110 }}>
                       <div className="bar"><span style={{ left: 0, width: `${Math.max(4, pos * 100)}%`, background: teamColor(r.color) }} /></div>
                     </td>
-                    <td className="num">{f1(r.adj_off)} <span className="muted sm">{r.off_rank}</span></td>
-                    <td className="num">{f1(r.adj_def)} <span className="muted sm">{r.def_rank}</span></td>
-                    <td className="hide-sm num">{f1(r.tempo)}</td>
+                    <td className="num">{dp === 1 ? f1(r.adj_off) : r.adj_off.toFixed(2)} <span className="muted sm">{r.off_rank}</span></td>
+                    <td className="num">{dp === 1 ? f1(r.adj_def) : r.adj_def.toFixed(2)} <span className="muted sm">{r.def_rank}</span></td>
+                    {meta.hoops && <td className="hide-sm num">{f1(r.tempo)}</td>}
                   </tr>
                 );
               })}
@@ -111,9 +111,9 @@ export function RatingsPage() {
           </table>
         </div>
         <div className="legend">
-          <span>Offense: points scored per 100 possessions vs. an average defense (higher is better)</span>
-          <span>Defense: points allowed per 100 (lower is better)</span>
-          <span>Pace: possessions per 40 minutes</span>
+          <span>Offense: {meta.pointWord} scored ({meta.effLabel}) vs. an average defense (higher is better)</span>
+          <span>Defense: {meta.pointWord} allowed (lower is better)</span>
+          {meta.hoops && <span>Pace: possessions per 40 minutes</span>}
           <span>Small number: national rank</span>
         </div>
       </div>

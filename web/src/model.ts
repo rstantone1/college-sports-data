@@ -1,9 +1,8 @@
 import type { Rating } from './api';
+import { sportMeta } from './sports';
 
-// Matchup math on top of adjusted-efficiency ratings.
-// Expected points per 100 = A's offense x B's defense / league average; possessions = tempoA x tempoB / league tempo.
-export const HCA_PER_SIDE = 2.2;           // points per 100 possessions, per side (fit on 2025-26)
-const SD: Record<string, number> = { mbb: 11.0, wbb: 11.5 };
+// Matchup math on top of adjusted-efficiency ratings, for any sport.
+// Expected efficiency = A's offense x B's defense / league average; units (possessions or innings) = tempoA x tempoB / league tempo.
 
 export interface League { off: number; tempo: number }
 export function league(rs: Rating[]): League {
@@ -15,12 +14,13 @@ export interface Prediction { aPts: number; bPts: number; poss: number; margin: 
 
 // site: 1 = A home, 0 = neutral, -1 = B home
 export function predict(a: Rating, b: Rating, L: League, site: 1 | 0 | -1, sport = 'mbb'): Prediction {
+  const m = sportMeta(sport);
   const poss = (a.tempo * b.tempo) / L.tempo;
-  const aEff = (a.adj_off * b.adj_def) / L.off + site * HCA_PER_SIDE;
-  const bEff = (b.adj_off * a.adj_def) / L.off - site * HCA_PER_SIDE;
-  const aPts = (aEff * poss) / 100, bPts = (bEff * poss) / 100;
+  const aEff = (a.adj_off * b.adj_def) / L.off + site * m.hcaPerSide;
+  const bEff = (b.adj_off * a.adj_def) / L.off - site * m.hcaPerSide;
+  const aPts = (aEff * poss) / m.scale, bPts = (bEff * poss) / m.scale;
   const margin = aPts - bPts;
-  return { aPts, bPts, poss, margin, aWin: normCdf(margin / (SD[sport] ?? 11)) };
+  return { aPts, bPts, poss, margin, aWin: normCdf(margin / m.sd) };
 }
 
 export function normCdf(z: number) {
@@ -32,4 +32,5 @@ export function normCdf(z: number) {
 
 export const pct = (p: number) => `${Math.round(p * 100)}%`;
 export const f1 = (v: number) => (Number.isFinite(v) ? v.toFixed(1) : '–');
-export const sign = (v: number) => (v > 0 ? `+${v.toFixed(1)}` : v.toFixed(1));
+export const f2 = (v: number) => (Number.isFinite(v) ? v.toFixed(2) : '–');
+export const sign = (v: number, dp = 1) => (v > 0 ? `+${v.toFixed(dp)}` : v.toFixed(dp));

@@ -7,16 +7,16 @@ import { FlowChart, ShotChart } from '../components/Charts';
 import { predict, league, pct } from '../model';
 
 interface Play { sequence: number; period: number; clock: string; team_id: number | null; play_type: string; description: string; scoring_play: boolean; score_value: number; home_score: number; away_score: number; x: number | null; y: number | null; }
-interface PLine { team_id: number; starter: boolean; did_not_play: boolean; stats: Record<string, number>; players: { display_name: string } }
+interface PLine { stat_group: string | null; team_id: number; starter: boolean; did_not_play: boolean; stats: Record<string, number>; players: { display_name: string } }
 
 export function GamePage() {
   const { gameId } = useParams();
   const id = Number(gameId);
-  const { sport, base } = useCtx();
+  const { sport, base, meta } = useCtx();
   const R = useRatings();
   const g = useAsync(() => rest<Game[]>(`v_games?id=eq.${id}`).then((r) => r[0]), [id]);
   const plays = useAsync(() => restAll<Play>(`plays?game_id=eq.${id}&order=sequence.asc&select=sequence,period,clock,team_id,play_type,description,scoring_play,score_value,home_score,away_score,x,y`), [id]);
-  const box = useAsync(() => rest<PLine[]>(`game_player_stats?game_id=eq.${id}&select=team_id,starter,did_not_play,stats,players(display_name)&order=starter.desc`), [id]);
+  const box = useAsync(() => rest<PLine[]>(`game_player_stats?game_id=eq.${id}&select=stat_group,team_id,starter,did_not_play,stats,players(display_name)&order=starter.desc`), [id]);
 
   const game = g.data;
   const regPer = sport === 'wbb' ? 4 : 2, perLen = sport === 'wbb' ? 10 : 20;
@@ -54,7 +54,29 @@ export function GamePage() {
   const final = game.completed && game.home_score != null;
   const homeWon = final && game.home_score! > game.away_score!;
 
+  const diamondSide = (teamId: number, name: string) => {
+    const all = (box.data ?? []).filter((l) => l.team_id === teamId);
+    const bat = all.filter((l) => l.stat_group === 'batting'), pit = all.filter((l) => l.stat_group === 'pitching');
+    const v = (l: PLine, k: string) => Number(l.stats[k] ?? 0);
+    const ipFmt = (x: number) => { const f = Math.floor(x + 1e-6); return `${f}.${Math.round((x - f) * 3)}`; };
+    return (
+      <div className="panel">
+        <h3>{name}</h3>
+        {!all.length && <p className="muted">No box score for this game.</p>}
+        {bat.length > 0 && <div className="tblwrap"><table className="box">
+          <thead><tr><th>Batter</th><th>AB</th><th>R</th><th>H</th><th>RBI</th><th>BB</th><th>K</th></tr></thead>
+          <tbody>{bat.map((l, i) => <tr key={i}><td style={{ fontWeight: l.starter ? 700 : 500 }}>{l.players?.display_name}</td><td>{v(l, 'atBats')}</td><td>{v(l, 'runs')}</td><td>{v(l, 'hits')}</td><td>{v(l, 'rbi')}</td><td>{v(l, 'walks')}</td><td>{v(l, 'strikeouts')}</td></tr>)}</tbody>
+        </table></div>}
+        {pit.length > 0 && <div className="tblwrap" style={{ marginTop: 12 }}><table className="box">
+          <thead><tr><th>Pitcher</th><th>IP</th><th>H</th><th>R</th><th>ER</th><th>BB</th><th>K</th></tr></thead>
+          <tbody>{pit.map((l, i) => <tr key={i}><td style={{ fontWeight: 600 }}>{l.players?.display_name}</td><td>{ipFmt(v(l, 'inningsPitched'))}</td><td>{v(l, 'hitsAllowed')}</td><td>{v(l, 'runsAllowed')}</td><td>{v(l, 'earnedRunsAllowed')}</td><td>{v(l, 'walksAllowed')}</td><td>{v(l, 'strikeouts')}</td></tr>)}</tbody>
+        </table></div>}
+      </div>
+    );
+  };
+
   const side = (teamId: number, name: string) => {
+    if (!meta.hoops) return diamondSide(teamId, name);
     const lines = (box.data ?? []).filter((l) => l.team_id === teamId && !l.did_not_play);
     const t = (k: string) => lines.reduce((a, l) => a + (Number(l.stats[k]) || 0), 0);
     return (
@@ -116,17 +138,17 @@ export function GamePage() {
               <div style={{ flexBasis: `${pred.aWin * 100}%`, background: hc, justifyContent: 'flex-end' }}>{pct(pred.aWin)}</div>
             </div>
             <p className="muted sm" style={{ textAlign: 'center', margin: 0 }}>
-              Using today's ratings: {game.home_name} {Math.round(pred.aPts)}, {game.away_name} {Math.round(pred.bPts)} in about {Math.round(pred.poss)} possessions.
+              Using today's ratings: {game.home_name} {meta.hoops ? Math.round(pred.aPts) : pred.aPts.toFixed(1)}, {game.away_name} {meta.hoops ? Math.round(pred.bPts) : pred.bPts.toFixed(1)}{meta.hoops ? ` in about ${Math.round(pred.poss)} possessions` : ' runs'}.
               {final && <> {(pred.aWin >= .5) === homeWon ? ' The favorite won.' : ' Upset.'}</>}
             </p>
           </>
         )}
       </div>
 
-      <div className="panel" style={{ marginBottom: 16 }}>
+      {meta.hoops && <div className="panel" style={{ marginBottom: 16 }}>
         <h3>How the game unfolded</h3>
         {plays.loading ? <Loading rows={3} /> : <FlowChart series={flow} homeColor={hc} awayColor={ac} homeName={game.home_name} awayName={game.away_name} />}
-      </div>
+      </div>}
 
       {shots.size > 0 && (
         <div className="grid g2e" style={{ marginBottom: 16, display: 'grid' }}>

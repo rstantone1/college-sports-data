@@ -5,6 +5,15 @@ import { ingestGames } from './ingest/games.js';
 import { ingestBoxScores } from './ingest/boxscores.js';
 import { ingestRosters } from './ingest/rosters.js';
 import { computeRatings, saveRatings } from './ratings/efficiency.js';
+import { ingestNcaaGames, ingestNcaaBox } from './ingest/ncaa.js';
+import { ensureSport } from './ingest/teams.js';
+import type { SportConfig } from './sports.js';
+
+// Baseball and softball come from NCAA.com; everything else from ESPN.
+const isNcaa = (s: SportConfig) => s.id === 'bsb' || s.id === 'sb';
+const teamsFor = async (s: SportConfig, y: number) => { if (isNcaa(s)) await ensureSport(s); else await ingestTeams(s, y); };
+const gamesFor = (s: SportConfig, y: number, o: { until?: Date; refreshDays?: number }) => (isNcaa(s) ? ingestNcaaGames(s, y, o) : ingestGames(s, y, o));
+const boxFor = (s: SportConfig, y: number, o: { plays?: boolean; limit?: number }) => (isNcaa(s) ? ingestNcaaBox(s, y, o) : ingestBoxScores(s, y, o));
 
 const [, , cmd, ...rest] = process.argv;
 const args: Record<string, string> = {};
@@ -18,19 +27,22 @@ async function main() {
   switch (cmd) {
     case 'migrate': await migrate(); break;
 
-    case 'ingest:teams': { const s = sport(args.sport); await ingestTeams(s, season(s.id)); break; }
-    case 'ingest:games': { const s = sport(args.sport); await ingestGames(s, season(s.id), { until: args.until ? new Date(args.until) : undefined, refreshDays: args.refresh ? Number(args.refresh) : undefined }); break; }
-    case 'ingest:box': { const s = sport(args.sport); await ingestBoxScores(s, season(s.id), { plays: args.plays === '1', limit: args.limit ? Number(args.limit) : undefined }); break; }
+    case 'ingest:teams': { const s = sport(args.sport); await teamsFor(s, season(s.id)); break; }
+    case 'ingest:games': { const s = sport(args.sport); await gamesFor(s, season(s.id), { until: args.until ? new Date(args.until) : undefined, refreshDays: args.refresh ? Number(args.refresh) : undefined }); break; }
+    case 'ingest:box': { const s = sport(args.sport); await boxFor(s, season(s.id), { plays: args.plays === '1', limit: args.limit ? Number(args.limit) : undefined }); break; }
     case 'ingest:rosters': { const s = sport(args.sport); await ingestRosters(s, season(s.id)); break; }
 
     // Full daily refresh for one sport: schedule/scores, new box scores, ratings.
     case 'daily': {
       const s = sport(args.sport); const y = season(s.id);
-      await ingestTeams(s, y);
-      await ingestGames(s, y, { refreshDays: 3 });
-      await ingestBoxScores(s, y, { plays: args.plays === '1' });
+      await teamsFor(s, y);
+      await gamesFor(s, y, { refreshDays: 3 });
+      await boxFor(s, y, { plays: args.plays === '1' });
       const r = await computeRatings(s, y);
-      await saveRatings(s, y, isoDate(new Date()), r.ratings);
+      // Off-season: stamp ratings with the last game date instead of today, so history doesn't fill with copies.
+      const lastGame = (await q<{ d: string | null }>(`select max(start_time)::date::text d from games where sport_id=$1 and season_year=$2 and completed`, [s.id, y]))[0]?.d;
+      const today = isoDate(new Date());
+      await saveRatings(s, y, lastGame && lastGame < today ? lastGame : today, r.ratings);
       try { await q(`select refresh_rollups()`); } catch (e) { console.warn('rollup refresh skipped:', (e as Error).message); }
       console.log(`${s.id} ${y}: ratings saved for ${r.ratings.length} teams (${r.games} games, ${r.skipped} skipped, HCA ${r.hca.toFixed(2)}, league ${r.leagueAvg.toFixed(1)})`);
       break;
@@ -43,7 +55,7 @@ async function main() {
       const n = Number(left[0].c);
       console.log(`${s.id} ${y}: ${n} box scores outstanding`);
       if (n === 0) break;
-      await ingestBoxScores(s, y, { plays: args.plays === '1', limit: Number(args.limit ?? 2500) });
+      await boxFor(s, y, { plays: args.plays === '1', limit: Number(args.limit ?? 2500) });
       const last = await q<{ d: string }>(`select max(start_time)::date::text d from games where sport_id=$1 and season_year=$2 and completed`, [s.id, y]);
       const r = await computeRatings(s, y);
       await saveRatings(s, y, last[0].d, r.ratings);

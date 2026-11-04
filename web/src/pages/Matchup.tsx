@@ -6,7 +6,7 @@ import { predict, league, pct, f1 } from '../model';
 import type { Rating } from '../api';
 
 export function MatchupPage() {
-  const { sport, base } = useCtx();
+  const { sport, base, meta } = useCtx();
   const { data, error, loading } = useRatings();
   const [sp, setSp] = useSearchParams();
   const [copied, setCopied] = useState(false);
@@ -54,9 +54,9 @@ export function MatchupPage() {
     const aBetter = lowerBetter ? av < bv : av > bv;
     return (
       <tr>
-        <td style={{ textAlign: 'right', fontWeight: aBetter ? 800 : 500, color: aBetter ? ca : 'inherit' }} className="num">{f1(av)}</td>
+        <td style={{ textAlign: 'right', fontWeight: aBetter ? 800 : 500, color: aBetter ? ca : 'inherit' }} className="num">{av.toFixed(meta.hoops ? 1 : 2)}</td>
         <td style={{ textAlign: 'center' }} className="muted sm">{label}</td>
-        <td style={{ fontWeight: !aBetter ? 800 : 500, color: !aBetter ? cb : 'inherit' }} className="num">{f1(bv)}</td>
+        <td style={{ fontWeight: !aBetter ? 800 : 500, color: !aBetter ? cb : 'inherit' }} className="num">{bv.toFixed(meta.hoops ? 1 : 2)}</td>
       </tr>
     );
   };
@@ -79,26 +79,26 @@ export function MatchupPage() {
 
       <div className="panel" style={{ marginTop: 12 }}>
         <div className="score">
-          <span className="s" style={{ color: ca }}>{Math.round(p.aPts)}</span>
+          <span className="s" style={{ color: ca }}>{meta.hoops ? Math.round(p.aPts) : p.aPts.toFixed(1)}</span>
           <span className="muted" style={{ fontSize: 28 }}>–</span>
-          <span className="s" style={{ color: cb }}>{Math.round(p.bPts)}</span>
+          <span className="s" style={{ color: cb }}>{meta.hoops ? Math.round(p.bPts) : p.bPts.toFixed(1)}</span>
         </div>
         <div className="prob">
           <div style={{ flexBasis: `${shown * 100}%`, background: ca }}>{a.abbreviation} {pct(p.aWin)}</div>
           <div style={{ flexBasis: `${(1 - shown) * 100}%`, background: cb, justifyContent: 'flex-end' }}>{pct(1 - p.aWin)} {b.abbreviation}</div>
         </div>
         <p style={{ textAlign: 'center', fontSize: 18, margin: '0 0 6px' }}>
-          <b>{fav.short_name}</b> by {spread.toFixed(1)}, wins {pct(favP)} of the time.
+          <b>{fav.short_name}</b> by {spread.toFixed(1)} {meta.pointWord}, wins {pct(favP)} of the time.
           {favP > .97 ? ' Not close.' : favP < .58 ? ' Coin flip.' : ''}
         </p>
-        <p className="muted sm" style={{ textAlign: 'center' }}>About {Math.round(p.poss)} possessions each.</p>
+        {meta.hoops && <p className="muted sm" style={{ textAlign: 'center' }}>About {Math.round(p.poss)} possessions each.</p>}
 
         <table style={{ margin: '16px auto 0', borderCollapse: 'collapse' }}>
           <tbody>
             {edge('Margin', a.adj_em, b.adj_em)}
             {edge('Offense', a.adj_off, b.adj_off)}
             {edge('Defense', a.adj_def, b.adj_def, true)}
-            {edge('Pace', a.tempo, b.tempo)}
+            {meta.hoops && edge('Pace', a.tempo, b.tempo)}
           </tbody>
         </table>
 

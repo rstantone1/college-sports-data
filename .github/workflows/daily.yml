@@ -19,11 +19,11 @@ concurrency:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 240
     strategy:
       fail-fast: false
       matrix:
-        sport: [mbb, wbb]
+        sport: [mbb, wbb, bsb, sb]
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
@@ -38,5 +38,6 @@ jobs:
       - run: npx tsx src/cli.ts migrate
       - run: npx tsx src/cli.ts daily --sport=${{ matrix.sport }} --plays=1
       - name: Catch up last season if anything is missing
+        if: matrix.sport == 'mbb' || matrix.sport == 'wbb'
         run: npx tsx src/cli.ts catchup --sport=${{ matrix.sport }} --plays=1 --limit=2500
       - run: npx tsx src/cli.ts top --sport=${{ matrix.sport }} --n=25

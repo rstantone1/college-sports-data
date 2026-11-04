@@ -1,14 +1,17 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useCtx, useRatings } from '../hooks';
+import { SPORTS, sportMeta } from '../sports';
 
 export function Shell({ children }: { children: ReactNode }) {
-  const { sport, season, base } = useCtx();
+  const { sport, season, base, meta } = useCtx();
   const loc = useLocation();
   const nav = useNavigate();
   useEffect(() => { window.scrollTo(0, 0); }, [loc.pathname]);
 
-  const swap = (s: string, y: number) => {
+  const swap = (s: string, y0: number) => {
+    const m = sportMeta(s);
+    const y = m.seasons.some((x) => x.year === y0) ? y0 : m.seasons[0].year;
     const rest = loc.pathname.split('/').slice(3).join('/');
     const keep = /^(scores|matchup|ballot)?$/.test(rest) ? rest : '';
     nav(`/${s}/${y}${keep ? '/' + keep : ''}`);
@@ -20,13 +23,15 @@ export function Shell({ children }: { children: ReactNode }) {
         <div className="top-in">
           <Link to={base} className="brand"><i />Ratings Lab</Link>
           <div className="seg" role="group" aria-label="Sport">
-            <button className={sport === 'mbb' ? 'on' : ''} onClick={() => swap('mbb', season)}>Men</button>
-            <button className={sport === 'wbb' ? 'on' : ''} onClick={() => swap('wbb', season)}>Women</button>
+            {Object.values(SPORTS).map((s) => (
+              <button key={s.id} className={sport === s.id ? 'on' : ''} onClick={() => swap(s.id, season)}>{s.short}</button>
+            ))}
           </div>
-          <div className="seg" role="group" aria-label="Season">
-            <button className={season === 2027 ? 'on' : ''} onClick={() => swap(sport, 2027)}>2026-27</button>
-            <button className={season === 2026 ? 'on' : ''} onClick={() => swap(sport, 2026)}>2025-26</button>
-          </div>
+          {meta.seasons.length > 1 && (
+            <div className="seg" role="group" aria-label="Season">
+              {meta.seasons.map((x) => <button key={x.year} className={season === x.year ? 'on' : ''} onClick={() => swap(sport, x.year)}>{x.label}</button>)}
+            </div>
+          )}
           <TeamSearch />
           <nav className="nav">
             <NavLink end to={base}>Ratings</NavLink>
