@@ -5,3 +5,5 @@ dist
 web/node_modules
 web/dist
 .netlify
+shots/
+shots3.cjs

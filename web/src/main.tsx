@@ -14,6 +14,7 @@ import { AboutPage } from './pages/About';
 import { TournamentPage } from './pages/Tournament';
 import { TransfersPage } from './pages/Transfers';
 import { LeadersPage } from './pages/Leaders';
+import { PlayerPage } from './pages/Player';
 
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
@@ -29,6 +30,7 @@ createRoot(document.getElementById('root')!).render(
         <Route path="/:sport/:season/transfers" element={<Shell><TransfersPage /></Shell>} />
         <Route path="/:sport/:season/leaders" element={<Shell><LeadersPage /></Shell>} />
         <Route path="/:sport/:season/team/:teamId" element={<Shell><TeamPage /></Shell>} />
+        <Route path="/:sport/:season/player/:playerId" element={<Shell><PlayerPage /></Shell>} />
         <Route path="/:sport/:season/game/:gameId" element={<Shell><GamePage /></Shell>} />
         <Route path="/:sport/:season/conf/:confId" element={<Shell><ConferencePage /></Shell>} />
         <Route path="*" element={<Navigate to="/mbb/2027" replace />} />

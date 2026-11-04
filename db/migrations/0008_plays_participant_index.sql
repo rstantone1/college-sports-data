@@ -1,0 +1,1 @@
+-- Applied in Supabase. See migration history: 0008_plays_participant_index

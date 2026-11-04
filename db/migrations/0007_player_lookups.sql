@@ -1,0 +1,1 @@
+-- Applied in Supabase. See migration history: 0007_player_lookups

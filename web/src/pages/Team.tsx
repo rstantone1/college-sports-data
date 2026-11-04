@@ -126,9 +126,9 @@ export function TeamPage() {
             <div className="panel">
               <h3>Portal moves</h3>
               {moves.data!.filter((m) => m.to_team_id === id).length > 0 && <p className="sm muted" style={{ margin: '0 0 4px' }}>Arrived</p>}
-              {moves.data!.filter((m) => m.to_team_id === id).map((m) => <p key={m.player_id} style={{ margin: '0 0 6px' }}><b>{m.display_name}</b> <span className="muted sm">from {m.from_team}{m.gp ? ` · ${(Number(m.pts) / m.gp).toFixed(1)} ppg` : ''}</span></p>)}
+              {moves.data!.filter((m) => m.to_team_id === id).map((m) => <p key={m.player_id} style={{ margin: '0 0 6px' }}><Link to={`${base}/player/${m.player_id}`}><b>{m.display_name}</b></Link> <span className="muted sm">from {m.from_team}{m.gp ? ` · ${(Number(m.pts) / m.gp).toFixed(1)} ppg` : ''}</span></p>)}
               {moves.data!.filter((m) => m.from_team_id === id).length > 0 && <p className="sm muted" style={{ margin: '8px 0 4px' }}>Left</p>}
-              {moves.data!.filter((m) => m.from_team_id === id).map((m) => <p key={m.player_id} style={{ margin: '0 0 6px' }}><b>{m.display_name}</b> <span className="muted sm">to {m.to_team}{m.gp ? ` · ${(Number(m.pts) / m.gp).toFixed(1)} ppg` : ''}</span></p>)}
+              {moves.data!.filter((m) => m.from_team_id === id).map((m) => <p key={m.player_id} style={{ margin: '0 0 6px' }}><Link to={`${base}/player/${m.player_id}`}><b>{m.display_name}</b></Link> <span className="muted sm">to {m.to_team}{m.gp ? ` · ${(Number(m.pts) / m.gp).toFixed(1)} ppg` : ''}</span></p>)}
               <Link to={`${base}/transfers`} style={{ color: 'var(--cool)', fontWeight: 600, fontSize: 14 }}>All transfers</Link>
             </div>
           )}
@@ -151,6 +151,7 @@ export function TeamPage() {
 }
 
 function Roster({ rows, loading }: { rows: PlayerLine[]; loading: boolean }) {
+  const { base } = useCtx();
   const [per, setPer] = useState<'game' | 'total'>('game');
   if (loading) return <Loading rows={6} />;
   if (!rows.length) return <p className="muted">Player stats appear after the first game is processed.</p>;
@@ -168,7 +169,7 @@ function Roster({ rows, loading }: { rows: PlayerLine[]; loading: boolean }) {
           <tbody>
             {rows.filter((r) => r.gp > 0).map((r) => (
               <tr key={r.player_id}>
-                <td style={{ fontWeight: 600 }}>{r.display_name}{r.gs > 0 && <span className="muted sm"> {r.gs} GS</span>}</td>
+                <td style={{ fontWeight: 600 }}><Link to={`${base}/player/${r.player_id}`}>{r.display_name}</Link>{r.gs > 0 && <span className="muted sm"> {r.gs} GS</span>}</td>
                 <td>{r.gp}</td><td>{d(r.min, r.gp)}</td><td style={{ fontWeight: 700 }}>{d(r.pts, r.gp)}</td><td>{d(r.reb, r.gp)}</td><td>{d(r.ast, r.gp)}</td>
                 <td className="hide-sm">{d(r.stl, r.gp)}</td><td className="hide-sm">{d(r.blk, r.gp)}</td>
                 <td>{pctS(r.fgm, r.fga)}</td><td>{pctS(r.tpm, r.tpa)}</td><td className="hide-sm">{pctS(r.ftm, r.fta)}</td>
@@ -182,6 +183,7 @@ function Roster({ rows, loading }: { rows: PlayerLine[]; loading: boolean }) {
 }
 
 function DiamondRoster({ rows, loading }: { rows: DiamondLine[]; loading: boolean }) {
+  const { base } = useCtx();
   const [view, setView] = useState<'bat' | 'pit'>('bat');
   if (loading) return <Loading rows={6} />;
   if (!rows.length) return <p className="muted">Player stats appear after box scores are processed.</p>;
@@ -202,12 +204,12 @@ function DiamondRoster({ rows, loading }: { rows: DiamondLine[]; loading: boolea
         {view === 'bat' ? (
           <table className="box">
             <thead><tr><th>Player</th><th>G</th><th>AB</th><th>R</th><th>H</th><th>RBI</th><th>BB</th><th>K</th><th>AVG</th><th>OBP</th></tr></thead>
-            <tbody>{bat.map((r) => <tr key={r.player_id}><td style={{ fontWeight: 600 }}>{r.display_name}</td><td>{r.g_bat}</td><td>{N(r.ab)}</td><td>{N(r.r)}</td><td>{N(r.h)}</td><td>{N(r.rbi)}</td><td>{N(r.bb)}</td><td>{N(r.so)}</td><td style={{ fontWeight: 700 }}>{avg(r.h, r.ab)}</td><td>{obp(r)}</td></tr>)}</tbody>
+            <tbody>{bat.map((r) => <tr key={r.player_id}><td style={{ fontWeight: 600 }}><Link to={`${base}/player/${r.player_id}`}>{r.display_name}</Link></td><td>{r.g_bat}</td><td>{N(r.ab)}</td><td>{N(r.r)}</td><td>{N(r.h)}</td><td>{N(r.rbi)}</td><td>{N(r.bb)}</td><td>{N(r.so)}</td><td style={{ fontWeight: 700 }}>{avg(r.h, r.ab)}</td><td>{obp(r)}</td></tr>)}</tbody>
           </table>
         ) : (
           <table className="box">
             <thead><tr><th>Pitcher</th><th>G</th><th>IP</th><th>H</th><th>ER</th><th>BB</th><th>K</th><th>ERA</th></tr></thead>
-            <tbody>{pit.map((r) => <tr key={r.player_id}><td style={{ fontWeight: 600 }}>{r.display_name}</td><td>{r.g_pit}</td><td>{ipFmt(r.ip)}</td><td>{N(r.ha)}</td><td>{N(r.er)}</td><td>{N(r.bba)}</td><td>{N(r.k)}</td><td style={{ fontWeight: 700 }}>{era(r, 9)}</td></tr>)}</tbody>
+            <tbody>{pit.map((r) => <tr key={r.player_id}><td style={{ fontWeight: 600 }}><Link to={`${base}/player/${r.player_id}`}>{r.display_name}</Link></td><td>{r.g_pit}</td><td>{ipFmt(r.ip)}</td><td>{N(r.ha)}</td><td>{N(r.er)}</td><td>{N(r.bba)}</td><td>{N(r.k)}</td><td style={{ fontWeight: 700 }}>{era(r, 9)}</td></tr>)}</tbody>
           </table>
         )}
       </div>
@@ -224,6 +226,7 @@ const CFB_GROUPS: [string, string, [string, string][]][] = [
   ['kicking', 'Kicking', [['fieldGoalsMade', 'FGM'], ['fieldGoalAttempts', 'FGA'], ['extraPointsMade', 'XPM'], ['longFieldGoalMade', 'LONG']]],
 ];
 function CfbRoster({ rows, loading }: { rows: CfbLine[]; loading: boolean }) {
+  const { base } = useCtx();
   const [grp, setGrp] = useState('passing');
   if (loading) return <Loading rows={6} />;
   if (!rows.length) return <p className="muted">Player stats appear after box scores are processed.</p>;
@@ -234,7 +237,7 @@ function CfbRoster({ rows, loading }: { rows: CfbLine[]; loading: boolean }) {
       <div className="chips scroll">{CFB_GROUPS.map((g) => <button key={g[0]} className={`chip ${g[0] === def[0] ? 'on' : ''}`} onClick={() => setGrp(g[0])}>{g[1]}</button>)}</div>
       <div className="tblwrap"><table className="box">
         <thead><tr><th>Player</th><th>G</th>{def[2].map(([k, l]) => <th key={k}>{l}</th>)}</tr></thead>
-        <tbody>{list.map((r) => <tr key={r.player_id}><td style={{ fontWeight: 600 }}>{r.display_name}</td><td>{r.games}</td>{def[2].map(([k]) => <td key={k}>{r.totals[k] ?? '–'}</td>)}</tr>)}</tbody>
+        <tbody>{list.map((r) => <tr key={r.player_id}><td style={{ fontWeight: 600 }}><Link to={`${base}/player/${r.player_id}`}>{r.display_name}</Link></td><td>{r.games}</td>{def[2].map(([k]) => <td key={k}>{r.totals[k] ?? '–'}</td>)}</tr>)}</tbody>
       </table></div>
     </>
   );

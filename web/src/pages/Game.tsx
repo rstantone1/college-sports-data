@@ -7,7 +7,7 @@ import { FlowChart, ShotChart } from '../components/Charts';
 import { predict, league, pct } from '../model';
 
 interface Play { sequence: number; period: number; clock: string; team_id: number | null; play_type: string; description: string; scoring_play: boolean; score_value: number; home_score: number; away_score: number; x: number | null; y: number | null; }
-interface PLine { stat_group: string | null; team_id: number; starter: boolean; did_not_play: boolean; stats: Record<string, number>; players: { display_name: string } }
+interface PLine { player_id: number; stat_group: string | null; team_id: number; starter: boolean; did_not_play: boolean; stats: Record<string, number>; players: { display_name: string } }
 
 export function GamePage() {
   const { gameId } = useParams();
@@ -16,7 +16,7 @@ export function GamePage() {
   const R = useRatings();
   const g = useAsync(() => rest<Game[]>(`v_games?id=eq.${id}`).then((r) => r[0]), [id]);
   const plays = useAsync(() => restAll<Play>(`plays?game_id=eq.${id}&order=sequence.asc&select=sequence,period,clock,team_id,play_type,description,scoring_play,score_value,home_score,away_score,x,y`), [id]);
-  const box = useAsync(() => rest<PLine[]>(`game_player_stats?game_id=eq.${id}&select=stat_group,team_id,starter,did_not_play,stats,players(display_name)&order=starter.desc`), [id]);
+  const box = useAsync(() => rest<PLine[]>(`game_player_stats?game_id=eq.${id}&select=player_id,stat_group,team_id,starter,did_not_play,stats,players(display_name)&order=starter.desc`), [id]);
 
   const game = g.data;
   const regPer = sport === 'wbb' ? 4 : 2, perLen = sport === 'wbb' ? 10 : 20;
@@ -67,11 +67,11 @@ export function GamePage() {
         {!all.length && <p className="muted">No box score for this game.</p>}
         {bat.length > 0 && <div className="tblwrap"><table className="box">
           <thead><tr><th>Batter</th><th>AB</th><th>R</th><th>H</th><th>RBI</th><th>BB</th><th>K</th></tr></thead>
-          <tbody>{bat.map((l, i) => <tr key={i}><td style={{ fontWeight: l.starter ? 700 : 500 }}>{l.players?.display_name}</td><td>{v(l, 'atBats')}</td><td>{v(l, 'runs')}</td><td>{v(l, 'hits')}</td><td>{v(l, 'rbi')}</td><td>{v(l, 'walks')}</td><td>{v(l, 'strikeouts')}</td></tr>)}</tbody>
+          <tbody>{bat.map((l, i) => <tr key={i}><td style={{ fontWeight: l.starter ? 700 : 500 }}><Link to={`${base}/player/${l.player_id}`}>{l.players?.display_name}</Link></td><td>{v(l, 'atBats')}</td><td>{v(l, 'runs')}</td><td>{v(l, 'hits')}</td><td>{v(l, 'rbi')}</td><td>{v(l, 'walks')}</td><td>{v(l, 'strikeouts')}</td></tr>)}</tbody>
         </table></div>}
         {pit.length > 0 && <div className="tblwrap" style={{ marginTop: 12 }}><table className="box">
           <thead><tr><th>Pitcher</th><th>IP</th><th>H</th><th>R</th><th>ER</th><th>BB</th><th>K</th></tr></thead>
-          <tbody>{pit.map((l, i) => <tr key={i}><td style={{ fontWeight: 600 }}>{l.players?.display_name}</td><td>{ipFmt(v(l, 'inningsPitched'))}</td><td>{v(l, 'hitsAllowed')}</td><td>{v(l, 'runsAllowed')}</td><td>{v(l, 'earnedRunsAllowed')}</td><td>{v(l, 'walksAllowed')}</td><td>{v(l, 'strikeouts')}</td></tr>)}</tbody>
+          <tbody>{pit.map((l, i) => <tr key={i}><td style={{ fontWeight: 600 }}><Link to={`${base}/player/${l.player_id}`}>{l.players?.display_name}</Link></td><td>{ipFmt(v(l, 'inningsPitched'))}</td><td>{v(l, 'hitsAllowed')}</td><td>{v(l, 'runsAllowed')}</td><td>{v(l, 'earnedRunsAllowed')}</td><td>{v(l, 'walksAllowed')}</td><td>{v(l, 'strikeouts')}</td></tr>)}</tbody>
         </table></div>}
       </div>
     );
@@ -96,7 +96,7 @@ export function GamePage() {
           return (
             <div className="tblwrap" key={g} style={{ marginTop: 10 }}><table className="box">
               <thead><tr><th>{label}</th>{keys.map((k) => <th key={k}>{short[k]}</th>)}</tr></thead>
-              <tbody>{rows.map((l, i) => <tr key={i}><td style={{ fontWeight: 600 }}>{l.players?.display_name}</td>{keys.map((k) => <td key={k}>{l.stats[k] ?? 0}</td>)}</tr>)}</tbody>
+              <tbody>{rows.map((l, i) => <tr key={i}><td style={{ fontWeight: 600 }}><Link to={`${base}/player/${l.player_id}`}>{l.players?.display_name}</Link></td>{keys.map((k) => <td key={k}>{l.stats[k] ?? 0}</td>)}</tr>)}</tbody>
             </table></div>
           );
         })}
@@ -118,7 +118,7 @@ export function GamePage() {
             <tbody>
               {lines.map((l, i) => (
                 <tr key={i}>
-                  <td style={{ fontWeight: l.starter ? 700 : 500 }}>{l.players?.display_name}</td>
+                  <td style={{ fontWeight: l.starter ? 700 : 500 }}><Link to={`${base}/player/${l.player_id}`}>{l.players?.display_name}</Link></td>
                   <td>{l.stats.minutes ?? '–'}</td><td style={{ fontWeight: 700 }}>{l.stats.points ?? 0}</td>
                   <td>{l.stats.fieldGoalsMade ?? 0}-{l.stats.fieldGoalsAttempted ?? 0}</td>
                   <td>{l.stats.threePointFieldGoalsMade ?? 0}-{l.stats.threePointFieldGoalsAttempted ?? 0}</td>

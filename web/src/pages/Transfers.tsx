@@ -68,7 +68,7 @@ export function TransfersPage() {
                 const fg = x.fga ? `${(100 * Number(x.fgm) / Number(x.fga)).toFixed(0)}%` : '–', tp = x.tpa ? `${(100 * Number(x.tpm) / Number(x.tpa)).toFixed(0)}%` : '–';
                 return (
                   <tr key={`${x.player_id}-${x.to_team_id}`}>
-                    <td className="l"><b>{x.display_name}</b><div className="muted sm">{[x.position, x.class_year, ht(x.height_in), x.hometown && x.home_state ? `${x.hometown}, ${x.home_state}` : x.hometown].filter(Boolean).join(' · ')}</div></td>
+                    <td className="l"><Link to={`${base}/player/${x.player_id}`}><b>{x.display_name}</b></Link><div className="muted sm">{[x.position, x.class_year, ht(x.height_in), x.hometown && x.home_state ? `${x.hometown}, ${x.home_state}` : x.hometown].filter(Boolean).join(' · ')}</div></td>
                     <td className="l"><Link to={`${base}/team/${x.from_team_id}`} className="team">{x.from_logo && <img src={x.from_logo} alt="" />}<span>{x.from_team}{f && <span className="muted sm"> #{f.rank}</span>}</span></Link></td>
                     <td className="l"><Link to={`${base}/team/${x.to_team_id}`} className="team">{x.to_logo && <img src={x.to_logo} alt="" />}<span>{x.to_team}{to && <span className="muted sm"> #{to.rank}</span>}</span></Link></td>
                     <td className="num">{x.gp ?? '–'}</td>
