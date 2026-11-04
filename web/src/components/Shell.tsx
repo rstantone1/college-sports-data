@@ -18,7 +18,7 @@ export function Shell({ children }: { children: ReactNode }) {
     <>
       <header className="top">
         <div className="top-in">
-          <Link to={base} className="brand"><i />The Board</Link>
+          <Link to={base} className="brand"><i />Lettered</Link>
           <div className="seg" role="group" aria-label="Sport">
             <button className={sport === 'mbb' ? 'on' : ''} onClick={() => swap('mbb', season)}>Men</button>
             <button className={sport === 'wbb' ? 'on' : ''} onClick={() => swap('wbb', season)}>Women</button>
