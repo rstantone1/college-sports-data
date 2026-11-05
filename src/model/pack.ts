@@ -38,6 +38,9 @@ export async function loadSeason(s: SportConfig, year: number, until?: Date): Pr
       const u = uH != null && uA != null ? (uH + uA) / 2 : (uH ?? uA)!;
       uH = uA = u;
     }
+    // Old diamond seasons were loaded from scoreboards only (no box scores), so innings aren't known: treat the game
+    // as regulation length. Extra-inning games (about 1 in 10) are slightly overstated; far better than dropping history.
+    if (s.scoringUnit === 'inning') { uH = uH ?? s.regulationLength; uA = uA ?? s.regulationLength; }
     if (uH == null || uA == null || uH <= 0 || uA <= 0) continue;
     if (s.scoringUnit === 'inning') { uH = Math.max(uH, s.regulationLength); uA = Math.max(uA, s.regulationLength); }
     let rf = 1;
