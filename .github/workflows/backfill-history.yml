@@ -13,6 +13,10 @@ on:
       seasons:
         description: 'Season years as a JSON list, e.g. [2015,2016,2017] (hoops: 2015 = the 2014-15 season)'
         required: true
+      boxes:
+        description: "Load box scores too (1/0). Scores alone are enough for ratings; NCAA box scores are slow."
+        required: false
+        default: "1"
       parallel:
         description: "Seasons at once (be polite to the data sources)"
         required: false
@@ -45,6 +49,6 @@ jobs:
           S="--sport=${{ inputs.sport }} --season=${{ matrix.season }}"
           npx tsx src/cli.ts ingest:teams $S
           npx tsx src/cli.ts ingest:games $S --refresh=0
-          npx tsx src/cli.ts ingest:box $S --plays=0
+          if [ "${{ inputs.boxes }}" != "0" ]; then npx tsx src/cli.ts ingest:box $S --plays=0; fi
           npx tsx src/cli.ts ingest:independents $S
           npx tsx src/cli.ts status $S || true
