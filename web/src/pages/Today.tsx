@@ -1,8 +1,9 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { rest, restAll, ratingsFor, type Game, type Rating } from '../api';
 import { useAsync, useCtx, useRatings, useFollows, fmtTime, fmtDate, type Follow } from '../hooks';
 import { Loading, ErrorBox } from '../components/Shell';
+import { TeamPicker } from '../components/TeamPicker';
 import { predict, league, pct, outsider, type League } from '../model';
 import { sportMeta } from '../sports';
 
@@ -114,7 +115,18 @@ export function GameCard({ g, H, A, est, pr, final, homeWon, base }: { g: Game; 
 }
 
 // Followed teams, across sports: next game with the pick, and the last result.
+// The picker lives out here so it keeps its place while the list below it changes (empty -> loading -> filled).
 export function YourTeams({ follows }: { follows: Follow[] }) {
+  const [pick, setPick] = useState(false);
+  return (
+    <>
+      <YourTeamsList follows={follows} onPick={() => setPick(true)} />
+      {pick && <TeamPicker onClose={() => setPick(false)} />}
+    </>
+  );
+}
+
+function YourTeamsList({ follows, onPick }: { follows: Follow[]; onPick: () => void }) {
   const data = useAsync(async () => {
     const out = [];
     for (const f of follows) {
@@ -130,15 +142,15 @@ export function YourTeams({ follows }: { follows: Follow[] }) {
     return out;
   }, [follows.map((f) => `${f.sport}:${f.team_id}`).join(',')]);
   if (!follows.length) return (
-    <div className="panel" style={{ marginBottom: 18, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-      <span style={{ fontSize: 22 }}>☆</span>
-      <span><b>Follow your teams.</b> <span className="muted">Open any team and tap the star. They'll show up here first, every day.</span></span>
+    <div className="panel followcta">
+      <div><b>Follow your teams</b><div className="muted">Pick your schools once. Their next game, last result and win chance show up here every day.</div></div>
+      <button className="btn" onClick={onPick}>Pick your teams</button>
     </div>
   );
   if (data.loading) return <Loading rows={3} />;
   return (
     <section style={{ marginBottom: 18 }}>
-      <h2 style={{ fontSize: 22 }}>Your teams</h2>
+      <div className="rowhead"><h2 style={{ fontSize: 22 }}>Your teams</h2><button className="btn ghost" onClick={onPick}>＋ Add or remove</button></div>
       <div className="games">
         {(data.data ?? []).map(({ f, season, rs, next, last }) => {
           const byId = new Map(rs.map((r) => [r.team_id, r]));

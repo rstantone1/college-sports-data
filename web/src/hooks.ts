@@ -94,7 +94,7 @@ export function useFollows() {
   }, []);
   const write = (next: Follow[]) => { try { localStorage.setItem(FOLLOW_KEY, JSON.stringify(next)); } catch { /* unavailable */ } followListeners.forEach((f) => f()); };
   const has = (sport: string, team_id: number) => list.some((f) => f.sport === sport && f.team_id === team_id);
-  const toggle = (f: Follow) => write(has(f.sport, f.team_id) ? list.filter((x) => !(x.sport === f.sport && x.team_id === f.team_id)) : [...list, f].slice(-12));
+  const toggle = (f: Follow) => write(has(f.sport, f.team_id) ? list.filter((x) => !(x.sport === f.sport && x.team_id === f.team_id)) : [...list, f].slice(-30));
   return { list, has, toggle };
 }
 
