@@ -202,3 +202,13 @@ h3{font-family:var(--display);font-weight:700;font-size:20px;margin:0 0 8px}
 .daynav{display:flex;gap:6px;align-items:center;flex-wrap:nowrap}
 .daynav input{font:inherit;padding:8px 8px;border-radius:10px;border:1px solid var(--rule);background:var(--panel);color:var(--ink);font-weight:600;max-width:150px}
 .daynav .btn{padding:9px 12px}
+
+/* home */
+.homehead{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.homehead h1{margin:0;font-size:clamp(30px,5vw,46px)}
+.recordpill{background:var(--win-soft);color:var(--win);padding:7px 12px;border-radius:999px;font-size:14px;font-weight:600}
+.h2s{font-size:22px}
+.tops{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.tagged{position:relative}
+.tagged .tag{position:absolute;top:-8px;right:10px;z-index:1;background:var(--ink);color:var(--bg);font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px}
+.offs{display:grid;gap:6px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}

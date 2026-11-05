@@ -8,6 +8,7 @@ import { TeamPage } from './pages/Team';
 import { GamePage } from './pages/Game';
 import { MatchupPage } from './pages/Matchup';
 import { TodayPage } from './pages/Today';
+import { HomePage } from './pages/Home';
 import { SchoolPage } from './pages/School';
 import { RecordPage } from './pages/Record';
 import { BallotPage } from './pages/Ballot';
@@ -22,7 +23,7 @@ createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Navigate to="/mbb/2027/today" replace />} />
+        <Route path="/" element={<Shell><HomePage /></Shell>} />
         <Route path="/record" element={<Shell><RecordPage /></Shell>} />
         <Route path="/school/:espnId" element={<Shell><SchoolPage /></Shell>} />
         <Route path="/about" element={<Shell><AboutPage /></Shell>} />
@@ -38,7 +39,7 @@ createRoot(document.getElementById('root')!).render(
         <Route path="/:sport/:season/player/:playerId" element={<Shell><PlayerPage /></Shell>} />
         <Route path="/:sport/:season/game/:gameId" element={<Shell><GamePage /></Shell>} />
         <Route path="/:sport/:season/conf/:confId" element={<Shell><ConferencePage /></Shell>} />
-        <Route path="*" element={<Navigate to="/mbb/2027/today" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   </React.StrictMode>

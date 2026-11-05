@@ -3,10 +3,28 @@ const KEY = import.meta.env.VITE_SUPABASE_KEY as string;
 
 const cache = new Map<string, Promise<any>>();
 
+// Reads are kept on the device (survives closing the tab) for 20 minutes, so opening the site again is instant.
+// Each trip to the database costs ~half a second; the data only changes every three hours anyway. Older copies are
+// shown if the network fails.
+const TTL = 20 * 60 * 1000;
+const skey = (path: string) => `api:${path}`;
+function fromSession(path: string): any | undefined {
+  try { const raw = localStorage.getItem(skey(path)); if (!raw) return; const { t, v } = JSON.parse(raw); if (Date.now() - t < TTL) return v; } catch { /* unavailable */ }
+}
+function stale(path: string): any | undefined {
+  try { const raw = localStorage.getItem(skey(path)); return raw ? JSON.parse(raw).v : undefined; } catch { return undefined; }
+}
+function toSession(path: string, v: any) {
+  try { const raw = JSON.stringify({ t: Date.now(), v }); if (raw.length < 800_000) localStorage.setItem(skey(path), raw); }
+  catch { try { Object.keys(localStorage).filter((k) => k.startsWith('api:')).slice(0, 50).forEach((k) => localStorage.removeItem(k)); } catch { /* unavailable */ } }
+}
 export function rest<T = any>(path: string): Promise<T> {
   if (!cache.has(path)) {
+    const hit = fromSession(path);
+    if (hit !== undefined) { cache.set(path, Promise.resolve(hit)); return cache.get(path)!; }
     const p = fetch(`${URL}/rest/v1/${path}`, { headers: { apikey: KEY, Authorization: `Bearer ${KEY}` } })
-      .then(async (r) => { if (!r.ok) throw new Error(`${r.status} ${await r.text()}`); return r.json(); });
+      .then(async (r) => { if (!r.ok) throw new Error(`${r.status} ${await r.text()}`); const v = await r.json(); toSession(path, v); return v; })
+      .catch((e) => { const old = stale(path); if (old !== undefined) return old; throw e; });
     p.catch(() => cache.delete(path));
     cache.set(path, p);
   }
@@ -47,6 +65,20 @@ export const num = (v: any) => (v == null ? NaN : Number(v));
 export function ratingsFor(sport: string, season: number) {
   return restAll<Rating>(`v_ratings_latest?sport_id=eq.${sport}&season_year=eq.${season}&order=rank.asc`).then((rows) =>
     rows.map((r) => ({ ...r, adj_off: num(r.adj_off), adj_def: num(r.adj_def), adj_em: num(r.adj_em), tempo: num(r.tempo), raw_off: num(r.raw_off), raw_def: num(r.raw_def) })));
+}
+
+// A handful of teams' ratings (for picks on a few games) without the whole list.
+export function ratingsForTeams(sport: string, season: number, ids: number[]) {
+  if (!ids.length) return Promise.resolve([] as Rating[]);
+  return rest<Rating[]>(`v_ratings_latest?sport_id=eq.${sport}&season_year=eq.${season}&team_id=in.(${[...new Set(ids)].join(',')})`).then((rows) =>
+    rows.map((r) => ({ ...r, adj_off: num(r.adj_off), adj_def: num(r.adj_def), adj_em: num(r.adj_em), tempo: num(r.tempo), raw_off: num(r.raw_off), raw_def: num(r.raw_def) })));
+}
+// League averages without the whole list: just the two columns, which is a few KB.
+export function leagueFor(sport: string, season: number) {
+  return rest<{ adj_off: number; tempo: number }[]>(`v_ratings_latest?select=adj_off,tempo&sport_id=eq.${sport}&season_year=eq.${season}&limit=1000`).then((r) => {
+    const n = r.length || 1;
+    return { off: r.reduce((a, x) => a + num(x.adj_off), 0) / n, tempo: r.reduce((a, x) => a + num(x.tempo), 0) / n, n: r.length };
+  });
 }
 
 export async function previousRanks(sport: string, season: number, asOf: string): Promise<Map<number, number>> {

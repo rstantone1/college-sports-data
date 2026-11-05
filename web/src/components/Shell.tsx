@@ -23,6 +23,7 @@ export function Shell({ children }: { children: ReactNode }) {
     const keep = /^(today|scores|matchup|ballot|tournament|transfers|leaders)?$/.test(rest) ? rest : '';
     nav(`/${s}/${y}${keep ? '/' + keep : ''}`);
   };
+  const onHome = loc.pathname === '/';
   const onToday = /\/(today|scores)$/.test(loc.pathname);
   const onRank = /^\/[a-z]+\/\d+$/.test(loc.pathname);
   const more = [
@@ -41,7 +42,8 @@ export function Shell({ children }: { children: ReactNode }) {
             <b>{meta.short}</b><span className="muted">{meta.seasons.find((x) => x.year === season)?.label}</span><i>▾</i>
           </button>
           <nav className="nav desk">
-            <NavLink to={`${base}/today`}>Today</NavLink>
+            <NavLink end to="/">Home</NavLink>
+            <NavLink to={`${base}/today`}>Scores</NavLink>
             <NavLink end to={base}>Rankings</NavLink>
             {more.map((m) => <NavLink key={m.to} to={m.to}>{m.t}</NavLink>)}
           </nav>
@@ -79,9 +81,9 @@ export function Shell({ children }: { children: ReactNode }) {
       <main>{children}</main>
 
       <nav className="tabs phone" aria-label="Main">
-        <NavLink to={`${base}/today`} className={onToday ? 'active' : ''}><span className="ic">◷</span>Today</NavLink>
+        <NavLink end to="/" className={onHome ? 'active' : ''}><span className="ic">⌂</span>Home</NavLink>
+        <NavLink to={`${base}/today`} className={onToday ? 'active' : ''}><span className="ic">◷</span>Scores</NavLink>
         <NavLink end to={base} className={onRank ? 'active' : ''}><span className="ic">☰</span>Rankings</NavLink>
-        <button onClick={() => setSheet('search')}><span className="ic">⌕</span>Search</button>
         <button className={moreOn ? 'active' : ''} onClick={() => setSheet(sheet === 'more' ? null : 'more')}><span className="ic">⋯</span>More</button>
       </nav>
     </>
