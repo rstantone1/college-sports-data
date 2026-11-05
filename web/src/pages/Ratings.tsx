@@ -69,7 +69,7 @@ export function RatingsPage() {
       </div>
       {showKey && (
         <div className="panel" style={{ marginBottom: 12, maxWidth: 720 }}>
-          <p><b>Rating</b> is the whole story in one number: how many {meta.pointWord} this team would beat an average Division I team by, on a neutral court, in a typical game. +10 means a 10-{meta.pointWord.replace(/s$/, '')} favorite against an average team. Teams above zero are better than average.</p>
+          <p><b>Rating</b> is the whole story in one number: how many {meta.pointWord} this team would beat an average Division I team by, on a neutral {meta.venue}, in a typical game. +10 means a 10-{meta.pointWord.replace(/s$/, '')} favorite against an average team. Teams above zero are better than average.</p>
           <p><b>Scores</b> is {meta.pointWord} they'd put up in a typical game against an average defense. <b>Allows</b> is {meta.pointWord} an average offense would score on them, so lower is better. Rating is simply Scores minus Allows. Both assume an average pace, so a fast team and a slow team are compared fairly. The small gray number is the national rank for that column.</p>
           {meta.hoops && <p><b>Pace</b> is possessions per game. Fast teams score and allow more {meta.pointWord} without being better or worse.</p>}
           <p>"Adjusted" means every game is weighed by who it was against and where it was played. Beating a top-10 team on the road counts for far more than beating a bad team at home.</p>

@@ -8,13 +8,13 @@ export function AboutPage() {
       <div className="grid" style={{ maxWidth: 760 }}>
         <div className="panel">
           <h3>The rating</h3>
-          <p>Every team gets one number: how many points it would beat an average Division I team by, on a neutral court, in a typical game. A +12 team is a 12-point favorite over an average team. A −5 team is a 5-point underdog. Teams are ranked by this number.</p>
+          <p>Every team gets one number: how many points it would beat an average Division I team by, on a neutral site, in a typical game. A +12 team is a 12-point favorite over an average team. A −5 team is a 5-point underdog. Teams are ranked by this number.</p>
           <p>It's built from two halves. <b>Offense</b> is the points a team would score per game against an average defense. <b>Defense</b> is the points it would allow against an average offense. Rating is offense minus defense.</p>
         </div>
         <div className="panel">
           <h3>Why "adjusted" matters</h3>
           <p>Scoring 80 against a terrible defense isn't the same as scoring 80 against a great one. So every game is weighed by the opponent: each team's offense is graded against the defenses it faced, and each defense against the offenses it faced. That's repeated until every team's numbers are consistent with every game it played.</p>
-          <p>Home court is worth about two points per game to the home team, and that's taken out too. Beating a good team on the road is the most impressive thing you can do.</p>
+          <p>Playing at home is worth about two points a game in basketball and about two and a half in football, and that's taken out too. Beating a good team on the road is the most impressive thing you can do.</p>
         </div>
         <div className="panel">
           <h3>Early in a season</h3>

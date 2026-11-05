@@ -64,7 +64,7 @@ export function MatchupPage() {
   return (
     <>
       <h1>Matchup machine</h1>
-      <p className="sub">Pick any two teams and a court. We'll give you the likely score, the spread, and each team's chance to win.</p>
+      <p className="sub">Pick any two teams and where they play. We'll give you the likely score, the spread, and each team's chance to win.</p>
       <div className="mu">
         <Pick r={a} k="a" />
         <div className="vs">vs</div>
@@ -73,7 +73,7 @@ export function MatchupPage() {
 
       <div className="chips" style={{ justifyContent: 'center', marginTop: 16 }}>
         <button className={`chip ${site === 1 ? 'on' : ''}`} onClick={() => set('site', 1)}>At {a.short_name}</button>
-        <button className={`chip ${site === 0 ? 'on' : ''}`} onClick={() => set('site', 0)}>Neutral court</button>
+        <button className={`chip ${site === 0 ? 'on' : ''}`} onClick={() => set('site', 0)}>Neutral {meta.venue}</button>
         <button className={`chip ${site === -1 ? 'on' : ''}`} onClick={() => set('site', -1)}>At {b.short_name}</button>
       </div>
 

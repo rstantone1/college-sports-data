@@ -3,7 +3,7 @@ import { restAll, type Game, type Rating } from '../api';
 import { useAsync, useCtx, percentile, fmtDate } from '../hooks';
 import { Loading } from './Shell';
 import { Bars, type BarRow } from './Bars';
-import { perGame, sign } from '../model';
+import { perGame, sign, predict, league } from '../model';
 
 export interface Profile {
   sport_id: string; season_year: number; team_id: number; gp: number; wins: number; losses: number;
@@ -82,33 +82,52 @@ export function ProfileBars({ me, all, ratings }: { me: Profile; all: Profile[];
 
 interface Impact { game_id: number; game_adj_em: number; contrib: number }
 
-// The games that moved the rating most, in plain words.
+// The games that moved the rating most, in plain words: what we expected going in, what happened, and how much it
+// changed the rating. A blowout of a weak team can count as much as a close win over a good one if it beat
+// expectations by more, which is why the expected margin is shown.
 export function WhyRanked({ teamId, games, byId }: { teamId: number; games: Game[]; byId: Map<number, Rating> }) {
   const { sport, season, base, meta } = useCtx();
   const imp = useAsync(() => restAll<Impact>(`team_game_impact?sport_id=eq.${sport}&season_year=eq.${season}&team_id=eq.${teamId}&select=game_id,game_adj_em,contrib`), [sport, season, teamId]);
   if (imp.loading) return <Loading rows={3} />;
-  const rows = (imp.data ?? []).map((x) => ({ ...x, contrib: Number(x.contrib), g: games.find((g) => g.id === x.game_id) })).filter((x) => x.g);
-  if (!rows.length) return <p className="muted sm">Shows up after the first game.</p>;
+  const all = [...byId.values()]; const L = league(all); const me = byId.get(teamId);
   const k = meta.typicalUnits / meta.scale;
-  const up = [...rows].sort((a, b) => b.contrib - a.contrib).slice(0, 3).filter((x) => x.contrib > 0);
-  const down = [...rows].sort((a, b) => a.contrib - b.contrib).slice(0, 3).filter((x) => x.contrib < 0);
+  let rows = (imp.data ?? []).map((x) => ({ ...x, contrib: Number(x.contrib), g: games.find((g) => g.id === x.game_id) })).filter((x) => x.g && x.g.home_score != null);
+  // Seasons rated before we started saving each game's effect: rank games by how far the result beat the
+  // expected score, using the end-of-season ratings. Same idea, shown as points beyond what was expected.
+  const fallback = !rows.length && !!me;
+  if (fallback) rows = games.filter((g) => g.completed && g.home_score != null).flatMap((g) => {
+    const home = g.home_team_id === teamId; const opp = byId.get(home ? g.away_team_id : g.home_team_id);
+    if (!opp) return [];
+    const pr = predict(me!, opp, L, (g.neutral_site ? 0 : home ? 1 : -1) as 1 | 0 | -1, sport);
+    const m = home ? g.home_score! - g.away_score! : g.away_score! - g.home_score!;
+    return [{ game_id: g.id, game_adj_em: 0, contrib: (m - pr.margin) / k, g }];
+  });
+  if (!rows.length || !me) return <p className="muted sm">No games against Division I teams yet. Games against lower-division schools don't count toward the rating, so this fills in after the first one.</p>;
+  const cut = fallback ? 0.5 / k : 0.05;
+  const up = [...rows].sort((a, b) => b.contrib - a.contrib).slice(0, 3).filter((x) => x.contrib > cut);
+  const down = [...rows].sort((a, b) => a.contrib - b.contrib).slice(0, 3).filter((x) => x.contrib < -cut);
+  const by = (m: number) => (Math.abs(m) < 0.5 ? 'about even' : `${m > 0 ? 'win' : 'lose'} by ${Math.abs(m).toFixed(0)}`);
   const line = (x: typeof rows[number]) => {
     const g = x.g!; const home = g.home_team_id === teamId;
     const us = home ? g.home_score! : g.away_score!, them = home ? g.away_score! : g.home_score!;
-    const opp = byId.get(home ? g.away_team_id : g.home_team_id);
+    const oppId = home ? g.away_team_id : g.home_team_id; const opp = byId.get(oppId);
     const oppName = home ? g.away_name : g.home_name;
+    const pr = opp ? predict(me, opp, L, (g.neutral_site ? 0 : home ? 1 : -1) as 1 | 0 | -1, sport) : null;
     return (
-      <li key={x.game_id} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--rule)', alignItems: 'center' }}>
-        <span><Link to={`${base}/game/${g.id}`}><b className={us > them ? 'W' : 'L'}>{us > them ? 'W' : 'L'} {us}-{them}</b></Link> <span className="muted">{g.neutral_site ? 'vs' : home ? 'vs' : 'at'}</span> {oppName}{opp ? <span className="muted sm"> #{opp.rank}</span> : <span className="muted sm"> (lower division)</span>} <span className="muted sm">· {fmtDate(g.start_time)}</span></span>
-        <b className="num" style={{ color: x.contrib > 0 ? 'var(--win)' : 'var(--hot)' }}>{sign(x.contrib * k, 1)}</b>
+      <li key={x.game_id} className="why-row">
+        <div>
+          <Link to={`${base}/game/${g.id}`}><b className={us > them ? 'W' : 'L'}>{us > them ? 'W' : 'L'} {us}-{them}</b></Link> <span className="muted">{g.neutral_site ? 'vs' : home ? 'vs' : 'at'}</span> {oppName}{opp ? <span className="muted sm"> #{opp.rank}</span> : null}
+          {pr && <div className="muted sm">Expected to {by(pr.margin)} · {us > them ? 'won' : 'lost'} by {Math.abs(us - them)}</div>}
+        </div>
+        <b className="num" style={{ color: x.contrib > 0 ? 'var(--win)' : 'var(--hot)' }}>{sign(x.contrib * k, fallback ? 0 : 1)}</b>
       </li>
     );
   };
   return (
     <>
-      <p className="muted sm" style={{ margin: '0 0 8px' }}>How much each game moved the rating ({meta.pointWord} per game), after accounting for who it was against and where. Big wins over good teams count most; close calls against weak teams cost.</p>
-      {up.length > 0 && <><div className="sm muted" style={{ fontWeight: 700 }}>Helped most</div><ul className="sched" style={{ marginBottom: 10 }}>{up.map(line)}</ul></>}
-      {down.length > 0 && <><div className="sm muted" style={{ fontWeight: 700 }}>Hurt most</div><ul className="sched">{down.map(line)}</ul></>}
+      <p className="muted sm" style={{ margin: '0 0 8px' }}>The games that moved {me.short_name}'s rating most. What matters is beating expectations: winning big when expected to win big doesn't move much; winning bigger than expected, or holding a team to almost nothing, does. {fallback ? `Numbers are ${meta.pointWord} better or worse than expected, judged against how good each team turned out to be.` : `Numbers are ${meta.pointWord} per game added to or taken off the rating.`}</p>
+      {up.length > 0 && <><div className="sm" style={{ fontWeight: 800 }}>Better than expected</div><ul className="sched" style={{ marginBottom: 12 }}>{up.map(line)}</ul></>}
+      {down.length > 0 && <><div className="sm" style={{ fontWeight: 800 }}>Worse than expected</div><ul className="sched">{down.map(line)}</ul></>}
     </>
   );
 }

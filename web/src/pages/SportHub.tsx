@@ -6,6 +6,9 @@ import { Loading, TeamCell } from '../components/Shell';
 import { predict, league, perGame, sign, ovr } from '../model';
 import { GameCard } from './Today';
 
+const OPENS: Record<string, string> = { mbb: 'November', wbb: 'November', cfb: 'late August', bsb: 'mid-February', sb: 'mid-February' };
+const MONTHS: Record<string, number[]> = { mbb: [11, 12, 1, 2, 3, 4], wbb: [11, 12, 1, 2, 3, 4], cfb: [8, 9, 10, 11, 12, 1], bsb: [2, 3, 4, 5, 6], sb: [2, 3, 4, 5, 6] };
+const inSeason = (s: string) => (MONTHS[s] ?? []).includes(new Date().getMonth() + 1);
 const N = (v: any) => (v == null || v === '' ? 0 : Number(v));
 const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
@@ -83,12 +86,13 @@ export function SportHub() {
   return (
     <>
       <h1 style={{ marginBottom: 14 }}>{meta.long}</h1>
+      {!inSeason(sport) && <p className="sub" style={{ marginTop: -8 }}>Off-season: these are the final numbers from {meta.seasons.find((x) => x.year === season)?.label}.</p>}
 
       <section className="hub-sec">
         <div className="hub-head"><h2>Today</h2><Link to={`${base}/today`}>All {games.length} games ›</Link></div>
         {today.loading ? <Loading rows={2} /> : games.length ? (
           <div className="hscroll">{games.slice(0, 8).map((x) => <div key={x.g.id} className="hcard"><GameCard g={x.g} H={x.H} A={x.A} est={false} pr={x.pr} final={x.final} homeWon={x.final && x.g.home_score! > x.g.away_score!} base={base} /></div>)}</div>
-        ) : <p className="muted">No games today. <Link to={`${base}/today`} style={{ color: 'var(--cool)' }}>See the schedule</Link></p>}
+        ) : OPENS[sport] && !inSeason(sport) ? <div className="panel"><b>Off-season.</b> <span className="muted">The next season starts in {OPENS[sport]}. Until then, everything here is last season's final numbers.</span></div> : <p className="muted">No games today. <Link to={`${base}/today`} style={{ color: 'var(--cool)' }}>See the schedule</Link></p>}
       </section>
 
       <div className="grid g2e">

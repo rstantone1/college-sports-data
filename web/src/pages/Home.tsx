@@ -256,7 +256,7 @@ function Featured({ f }: { f: { s: string; season: number; g: Game; H: Rating; A
   };
   return (
     <Link to={`/${f.s}/${f.season}/game/${g.id}`} className="featured">
-      <div className="ftop"><span>Game of the day · {sportMeta(f.s).long}</span><span>{fmtTime(g.start_time)}{g.neutral_site ? ' · neutral court' : ''}</span></div>
+      <div className="ftop"><span>Game of the day · {sportMeta(f.s).long}</span><span>{fmtTime(g.start_time)}{g.neutral_site ? ` · neutral ${sportMeta(f.s).venue}` : ''}</span></div>
       <div className="fbody">
         {side(A, ca, 1 - pr.aWin, pr.bPts, g.neutral_site ? '' : 'Away')}
         <div className="fvs">VS</div>

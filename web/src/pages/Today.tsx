@@ -78,7 +78,7 @@ export function TodayPage() {
           <span className="muted sm">{isToday(day) ? `${rows.length} games` : ''}</span>
           {called > 0 && <span className="pill win" style={{ marginLeft: 'auto' }}>Our picks: {right}-{called - right} ({pct(right / called)})</span>}
         </div>
-        {games.loading ? <Loading rows={6} /> : rows.length ? <div className="games">{rows.map(card)}</div> : <div className="panel empty">No games on this day.{latest.data?.[0] && ymd(new Date(latest.data[0].start_time)) !== day && <> <button className="btn ghost" style={{ marginLeft: 8 }} onClick={() => setSp({ d: ymd(new Date(latest.data![0].start_time)) }, { replace: true })}>Go to the last game day</button></>}</div>}
+        {games.loading ? <Loading rows={6} /> : rows.length ? <div className="games">{rows.map(card)}</div> : <div className="panel empty">No games on this day.{!sportMeta(sport).hoops && sport !== 'cfb' && [6, 7, 8, 9, 10, 11, 0].includes(new Date().getMonth()) && ' The season starts in February.'}{latest.data?.[0] && ymd(new Date(latest.data[0].start_time)) !== day && <> <button className="btn ghost" style={{ marginLeft: 8 }} onClick={() => setSp({ d: ymd(new Date(latest.data![0].start_time)) }, { replace: true })}>Go to the last game day</button></>}</div>}
       </section>
     </>
   );
