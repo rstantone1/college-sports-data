@@ -14,7 +14,7 @@ interface Row {
 // Every pick we made, scored against what happened. Live picks are written before tip and never edited.
 // "Replayed" picks come from running the model week by week over a past season it had not seen.
 export function RecordPage() {
-  const [kind, setKind] = useState<'live' | 'replay'>('live');
+  const [kindPick, setKind] = useState<'live' | 'replay' | null>(null);
   const [sport, setSport] = useState<string>('all');
   const data = useAsync(() => restAll<Row>(`predictions?select=sport_id,season_year,game_id,kind,made_at,home_prob,margin,estimated,games(home_score,away_score,completed,start_time,home_team_id,away_team_id)&estimated=eq.false&order=made_at.desc`), []);
 
@@ -22,6 +22,9 @@ export function RecordPage() {
   if (data.error) return <ErrorBox msg={data.error} />;
   const all = (data.data ?? []).map((r) => ({ ...r, home_prob: Number(r.home_prob), margin: Number(r.margin) }));
   const kinds = new Set(all.map((r) => r.kind));
+  // Until this season's picks have results, open on last season's replay so the page is never empty.
+  const liveScored = all.some((r) => r.kind === 'live' && r.games?.completed);
+  const kind = kindPick ?? (liveScored || !kinds.has('replay') ? 'live' : 'replay');
   const rows = all.filter((r) => r.kind === kind && (sport === 'all' || r.sport_id === sport));
   const scored = rows.filter((r) => r.games?.completed && r.games.home_score != null && r.games.home_score !== r.games.away_score);
   const pending = rows.length - scored.length;

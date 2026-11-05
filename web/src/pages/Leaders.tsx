@@ -88,8 +88,16 @@ export function LeadersPage() {
   const nav = useNavigate();
   const [who, setWho] = useState<'players' | 'teams'>('players');
   const src = meta.hoops ? 'mv_player_season' : sport === 'cfb' ? 'mv_cfb_season' : 'mv_diamond_season';
-  const players = useAsync(() => restAll<any>(`${src}?sport_id=eq.${sport}&season_year=eq.${season}`), [src, sport, season]);
-  const teams = useAsync(() => restAll<any>(`mv_team_season?sport_id=eq.${sport}&season_year=eq.${season}`), [sport, season]);
+  // Early in a season (a game or two each) leaderboards are noise, so show last season's until teams have played
+  // a few games. One tap switches to this season anyway.
+  const prevSeason = meta.seasons.find((x) => x.year === season - 1)?.year ?? null;
+  const [forceCurrent, setForceCurrent] = useState(false);
+  const cur = useAsync(() => restAll<any>(`mv_team_season?select=gp&sport_id=eq.${sport}&season_year=eq.${season}`), [sport, season]);
+  const curMaxGp = Math.max(0, ...(cur.data ?? []).map((r: any) => N(r.gp)));
+  const showPrev = !forceCurrent && prevSeason != null && !cur.loading && curMaxGp < 5;
+  const shown = showPrev ? prevSeason! : season;
+  const players = useAsync(() => cur.loading ? new Promise<any[]>(() => {}) : restAll<any>(`${src}?sport_id=eq.${sport}&season_year=eq.${shown}`), [src, sport, shown, cur.loading]);
+  const teams = useAsync(() => cur.loading ? new Promise<any[]>(() => {}) : restAll<any>(`mv_team_season?sport_id=eq.${sport}&season_year=eq.${shown}`), [sport, shown, cur.loading]);
   const pStats = meta.hoops ? hoopsPlayers : sport === 'cfb' ? cfbPlayers : diamondPlayers;
   const tStats = meta.hoops ? hoopsTeams : sport === 'cfb' ? cfbTeams : diamondTeams;
   const stats = who === 'players' ? pStats : tStats;
@@ -105,8 +113,8 @@ export function LeadersPage() {
     for (const r of data) {
       if (who === 'players') {
         const gp = N(r.gp ?? r.games ?? Math.max(N(r.g_bat), N(r.g_pit)));
-        if (gp < Math.max(3, maxGp * 0.4) && !(sport !== 'cfb' && !meta.hoops)) continue;   // regulars only
-        if (byId.size && !byId.has(r.team_id)) continue;                                   // D-I teams only (once ratings exist)
+        if (gp < Math.max(maxGp < 5 ? 1 : 3, maxGp * 0.4) && !(sport !== 'cfb' && !meta.hoops)) continue;   // regulars only
+        if (byId.size && !showPrev && !byId.has(r.team_id)) continue;                      // Division I teams only
       }
       if (stat.min && !stat.min(r)) continue;
       const v = stat.calc(r);
@@ -115,15 +123,19 @@ export function LeadersPage() {
     }
     out.sort((a, b) => (stat.asc ? a.v - b.v : b.v - a.v));
     return out.slice(0, 100);
-  }, [who, players.data, teams.data, stat, byId, sport, meta.hoops]);
+  }, [who, players.data, teams.data, stat, byId, sport, meta.hoops, showPrev]);
 
-  if (R.loading || players.loading || teams.loading) return <Loading />;
+  // Columns: the chosen stat first, then neighbours from the same list. Tap any column header to rank by it.
+  // Football players come in separate groups (passing, rushing...), so only the chosen stat is shown there.
+  const cols = sport === 'cfb' && who === 'players' ? [stat] : [stat, ...stats.filter((x) => x.key !== stat.key)].slice(0, 6);
+  if (R.loading || cur.loading || players.loading || teams.loading) return <Loading />;
   if (R.error) return <ErrorBox msg={R.error} />;
 
   return (
     <>
       <h1>Leaders</h1>
-      <p className="sub">{meta.long}, {meta.seasons.find((s) => s.year === season)?.label}. Players with real minutes. Shooting percentages need enough attempts to count.</p>
+      <p className="sub">{meta.long}, {meta.seasons.find((s) => s.year === shown)?.label}. Tap any column to rank by it.</p>
+      {showPrev && <div className="panel" style={{ marginBottom: 12, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}><span>The season just started, so these are <b>last season's</b> leaders. This season's take over after a few games.</span><button className="btn ghost" onClick={() => setForceCurrent(true)}>Show this season</button></div>}
       <div className="chips">
         <button className={`chip ${who === 'players' ? 'on' : ''}`} onClick={() => { setWho('players'); setKey(pStats[0].key); }}>Players</button>
         <button className={`chip ${who === 'teams' ? 'on' : ''}`} onClick={() => { setWho('teams'); setKey(tStats[0].key); }}>Teams</button>
@@ -136,7 +148,9 @@ export function LeadersPage() {
         {!rows.length && <p className="muted">Nothing here yet. Check back once games have been played.</p>}
         <div className="tblwrap">
           <table className="tbl">
-            <thead><tr><th>#</th><th className="l">{who === 'players' ? 'Player' : 'Team'}</th><th className="l hide-sm">{who === 'players' ? 'Team' : 'Conf'}</th><th>{who === 'players' ? 'GP' : 'Record'}</th><th>{stat.label}</th></tr></thead>
+            <thead><tr><th>#</th><th className="l">{who === 'players' ? 'Player' : 'Team'}</th><th className="l hide-sm">{who === 'players' ? 'Team' : 'Conf'}</th><th className="hide-sm">{who === 'players' ? 'GP' : 'Record'}</th>
+              {cols.map((c, ci) => <th key={c.key} className={`${c.key === stat.key ? 'sorted' : ''} ${ci >= 2 ? 'hide-sm' : ''}`} onClick={() => setKey(c.key)} title={`Sort by ${c.label}`}>{c.label}{c.key === stat.key ? (stat.asc ? ' ↑' : ' ↓') : ''}</th>)}
+            </tr></thead>
             <tbody>
               {rows.map(({ r, v }, i) => {
                 const team = byId.get(r.team_id);
@@ -145,8 +159,8 @@ export function LeadersPage() {
                     <td className="rk">{i + 1}</td>
                     <td className="l">{who === 'players' ? <span className="team" style={{ gap: 8 }}>{team?.logo_url && <img src={team.logo_url} alt="" loading="lazy" />}<Link to={`${base}/player/${r.player_id}`} onClick={(e) => e.stopPropagation()}><b>{r.display_name}</b></Link></span> : <TeamCell name={team?.short_name ?? '–'} logo={team?.logo_url} color={team?.color} />}</td>
                     <td className="l hide-sm muted">{who === 'players' ? (team ? <Link to={`${base}/team/${r.team_id}`}>{team.short_name}</Link> : '–') : team?.conference_short}</td>
-                    <td className="num">{who === 'players' ? N(r.gp ?? r.games ?? (stat.key.match(/era|k9|ip|^k$/) ? r.g_pit : r.g_bat)) : `${N(r.wins)}-${N(r.gp) - N(r.wins)}`}</td>
-                    <td className="num" style={{ fontSize: 18, fontWeight: 700 }}>{(stat.fmt ?? f1)(v)}</td>
+                    <td className="num hide-sm">{who === 'players' ? N(r.gp ?? r.games ?? (stat.key.match(/era|k9|ip|^k$/) ? r.g_pit : r.g_bat)) : `${N(r.wins)}-${N(r.gp) - N(r.wins)}`}</td>
+                    {cols.map((c, ci) => { const cv = c.key === stat.key ? v : c.calc(r); return <td key={c.key} className={`num ${ci >= 2 ? 'hide-sm' : ''}`} style={c.key === stat.key ? { fontSize: 18, fontWeight: 700 } : undefined}>{cv == null || !Number.isFinite(cv) ? '–' : (c.fmt ?? f1)(cv)}</td>; })}
                   </tr>
                 );
               })}

@@ -9,6 +9,8 @@ import { GamePage } from './pages/Game';
 import { MatchupPage } from './pages/Matchup';
 import { TodayPage } from './pages/Today';
 import { HomePage } from './pages/Home';
+import { SportHub } from './pages/SportHub';
+import { AllScoresPage } from './pages/AllScores';
 import { SchoolPage } from './pages/School';
 import { RecordPage } from './pages/Record';
 import { BallotPage } from './pages/Ballot';
@@ -27,7 +29,10 @@ createRoot(document.getElementById('root')!).render(
         <Route path="/record" element={<Shell><RecordPage /></Shell>} />
         <Route path="/school/:espnId" element={<Shell><SchoolPage /></Shell>} />
         <Route path="/about" element={<Shell><AboutPage /></Shell>} />
-        <Route path="/:sport/:season" element={<Shell><RatingsPage /></Shell>} />
+        <Route path="/scores" element={<Shell><AllScoresPage /></Shell>} />
+        <Route path="/:sport/:season" element={<Shell><SportHub /></Shell>} />
+        <Route path="/:sport/:season/rankings" element={<Shell><RatingsPage /></Shell>} />
+        <Route path="/:sport/:season/stats" element={<Shell><LeadersPage /></Shell>} />
         <Route path="/:sport/:season/today" element={<Shell><TodayPage /></Shell>} />
         <Route path="/:sport/:season/scores" element={<Shell><TodayPage /></Shell>} />
         <Route path="/:sport/:season/matchup" element={<Shell><MatchupPage /></Shell>} />

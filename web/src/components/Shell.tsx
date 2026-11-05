@@ -3,36 +3,38 @@ import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useCtx, useRatings, visibleColor, useFollows } from '../hooks';
 import { SPORTS, sportMeta } from '../sports';
 
-// Layout: one-row header (sport, search) and, on phones, a bottom tab bar like a native app. Season lives in the
-// sport sheet. The menu has four things; everything else is under More.
+// Layout. Bottom bar (phones) holds what you use every visit: Home, Scores across all sports, Sports, Search.
+// Inside a sport, a row of tabs under the header moves between that sport's sections, like a league page in
+// FotMob or ESPN.
 export function Shell({ children }: { children: ReactNode }) {
   const { sport, season, base, meta, inSport } = useCtx();
   const loc = useLocation();
   const nav = useNavigate();
-  const [sheet, setSheet] = useState<null | 'sport' | 'more' | 'search'>(null);
+  const [sheet, setSheet] = useState<null | 'sport' | 'search'>(null);
   useEffect(() => { window.scrollTo(0, 0); setSheet(null); }, [loc.pathname]);
   useEffect(() => {
     const k = (e: KeyboardEvent) => { if (e.key === 'Escape') setSheet(null); };
     window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k);
   }, []);
 
+  const rest = loc.pathname.split('/').slice(3).join('/');
   const swap = (s: string, y0: number) => {
     const m = sportMeta(s);
     const y = m.seasons.some((x) => x.year === y0) ? y0 : m.seasons[0].year;
-    const rest = loc.pathname.split('/').slice(3).join('/');
-    const keep = /^(today|scores|matchup|ballot|tournament|transfers|leaders)?$/.test(rest) ? rest : '';
+    const keep = /^(today|rankings|stats|matchup|ballot|tournament|transfers)?$/.test(rest) ? rest : '';
     nav(`/${s}/${y}${keep ? '/' + keep : ''}`);
   };
-  const onHome = loc.pathname === '/';
-  const onToday = /\/(today|scores)$/.test(loc.pathname);
-  const onRank = /^\/[a-z]+\/\d+$/.test(loc.pathname);
-  const more = [
-    { to: `${base}/matchup`, t: 'Matchup' }, { to: `${base}/leaders`, t: 'Leaders' },
-    ...(meta.tourney ? [{ to: `${base}/tournament`, t: 'Tournament odds' }] : []),
+  const tabs = [
+    { to: base, t: 'Overview', end: true }, { to: `${base}/rankings`, t: 'Rankings' }, { to: `${base}/today`, t: 'Scores' },
+    { to: `${base}/stats`, t: 'Stats' },
+    ...(meta.tourney ? [{ to: `${base}/tournament`, t: 'Tournament' }] : []),
     ...(meta.hoops ? [{ to: `${base}/transfers`, t: 'Transfers' }] : []),
-    { to: `${base}/ballot`, t: 'Your Top 25' }, { to: '/record', t: 'Track record' }, { to: '/about', t: 'How the numbers work' },
+    { to: `${base}/matchup`, t: 'Matchup' }, { to: `${base}/ballot`, t: 'Your Top 25' },
   ];
-  const moreOn = more.some((m) => loc.pathname === m.to);
+  const onHome = loc.pathname === '/';
+  const onScores = loc.pathname === '/scores';
+  const lastSport = (() => { try { return localStorage.getItem('lastSport'); } catch { return null; } })();
+  useEffect(() => { if (inSport) try { localStorage.setItem('lastSport', sport); } catch { /* */ } }, [inSport, sport]);
 
   return (
     <>
@@ -45,23 +47,27 @@ export function Shell({ children }: { children: ReactNode }) {
           ) : <Link to="/" className="brand"><i />Ratings Lab</Link>}
           <nav className="nav desk">
             <NavLink end to="/">Home</NavLink>
-            <NavLink to={`${base}/today`}>Scores</NavLink>
-            <NavLink end to={base}>Rankings</NavLink>
-            {more.map((m) => <NavLink key={m.to} to={m.to}>{m.t}</NavLink>)}
+            <NavLink end to="/scores">Scores</NavLink>
+            {Object.values(SPORTS).map((s) => <NavLink key={s.id} to={`/${s.id}/${s.seasons[0].year}`} className={() => (inSport && sport === s.id ? 'active' : '')}>{s.short}</NavLink>)}
           </nav>
           <div className="desk"><TeamSearch /></div>
           <button className="iconbtn phone" onClick={() => setSheet('search')} aria-label="Find a team">⌕</button>
         </div>
+        {inSport && (
+          <nav className="subtabs" aria-label={`${meta.long} sections`}>
+            {tabs.map((t) => <NavLink key={t.to} end={!!t.end} to={t.to}>{t.t}</NavLink>)}
+          </nav>
+        )}
       </header>
 
       {sheet === 'sport' && (
-        <Sheet onClose={() => setSheet(null)} title="Sport and season">
-          <div className="sheet-grid">
+        <Sheet onClose={() => setSheet(null)} title="Sports">
+          <div className="sheet-list">
             {Object.values(SPORTS).map((s) => (
-              <button key={s.id} className={`sheet-opt ${sport === s.id ? 'on' : ''}`} onClick={() => { swap(s.id, season); setSheet(null); }}>{s.long}</button>
+              <button key={s.id} className={`sheet-row ${inSport && sport === s.id ? 'on' : ''}`} onClick={() => { if (inSport) swap(s.id, season); else nav(`/${s.id}/${s.seasons[0].year}`); setSheet(null); }}>{s.long}</button>
             ))}
           </div>
-          {meta.seasons.length > 1 && (
+          {inSport && meta.seasons.length > 1 && (
             <>
               <h4>Season</h4>
               <div className="sheet-grid">
@@ -69,11 +75,11 @@ export function Shell({ children }: { children: ReactNode }) {
               </div>
             </>
           )}
-        </Sheet>
-      )}
-      {sheet === 'more' && (
-        <Sheet onClose={() => setSheet(null)} title="More">
-          <div className="sheet-list">{more.map((m) => <Link key={m.to} to={m.to} className="sheet-row">{m.t}</Link>)}</div>
+          <h4>Also</h4>
+          <div className="sheet-list">
+            <Link to="/record" className="sheet-row">How good are our picks?</Link>
+            <Link to="/about" className="sheet-row">How the ratings work</Link>
+          </div>
         </Sheet>
       )}
       {sheet === 'search' && (
@@ -84,10 +90,11 @@ export function Shell({ children }: { children: ReactNode }) {
 
       <nav className="tabs phone" aria-label="Main">
         <NavLink end to="/" className={onHome ? 'active' : ''}><Icon d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" />Home</NavLink>
-        <NavLink to={`${base}/today`} className={onToday ? 'active' : ''}><Icon d="M4 5h16v14H4zM4 9h16M8 3v4M16 3v4" />Scores</NavLink>
-        <NavLink end to={base} className={onRank ? 'active' : ''}><Icon d="M5 20V10M12 20V4M19 20v-7" />Rankings</NavLink>
-        <button className={moreOn ? 'active' : ''} onClick={() => setSheet(sheet === 'more' ? null : 'more')}><Icon d="M4 6h16M4 12h16M4 18h16" />More</button>
+        <NavLink end to="/scores" className={onScores ? 'active' : ''}><Icon d="M4 5h16v14H4zM4 9h16M8 3v4M16 3v4" />Scores</NavLink>
+        <button className={inSport ? 'active' : ''} onClick={() => setSheet(sheet === 'sport' ? null : 'sport')}><Icon d="M12 3a9 9 0 1 0 0 18a9 9 0 0 0 0-18zM3.5 9h17M3.5 15h17M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18" />{inSport ? meta.short.replace("'s hoops", "'s").replace('Football', 'Football') : 'Sports'}</button>
+        <button onClick={() => setSheet('search')}><Icon d="M11 4a7 7 0 1 0 0 14a7 7 0 0 0 0-14zM20 20l-4-4" />Search</button>
       </nav>
+      {void lastSport}
     </>
   );
 }

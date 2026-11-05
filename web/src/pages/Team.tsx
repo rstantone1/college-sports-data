@@ -76,7 +76,7 @@ export function TeamPage() {
         <div className="card"><div className="k">Offense</div><div className="v">{perGame(me, sport).off.toFixed(dp)}</div><div className="r">{meta.pointWord} per game · #{me.off_rank}</div></div>
         <div className="card"><div className="k">Defense</div><div className="v">{perGame(me, sport).def.toFixed(dp)}</div><div className="r">allowed per game · #{me.def_rank}</div></div>
         {meta.hoops && <div className="card"><div className="k">Pace</div><div className="v">{f1(me.tempo)}</div><div className="r">trips down the floor per game</div></div>}
-        {upcoming.length > 0 && <div className="card"><div className="k">Projected record</div><div className="v">{Math.round(projW)}-{totalG - Math.round(projW)}</div><div className="r">{wins}-{done.length - wins} so far</div></div>}
+        {upcoming.length >= 5 && <div className="card"><div className="k">Projected final record</div><div className="v">{Math.round(projW)}-{totalG - Math.round(projW)}</div><div className="r">{wins}-{done.length - wins} now · {upcoming.length} games left</div></div>}
       </div>
 
       {nextGame && (() => {
@@ -188,26 +188,42 @@ export function TeamPage() {
 function Roster({ rows, loading }: { rows: PlayerLine[]; loading: boolean }) {
   const { base } = useCtx();
   const [per, setPer] = useState<'game' | 'total'>('game');
+  const [sortK, setSortK] = useState('pts');
   if (loading) return <Loading rows={6} />;
   if (!rows.length) return <p className="muted">Player stats show up after the first game.</p>;
-  const d = (v: number, gp: number) => (per === 'game' ? (gp ? (Number(v) / gp).toFixed(1) : '–') : String(Math.round(Number(v))));
-  const pctS = (m: number, a: number) => (Number(a) ? (100 * Number(m) / Number(a)).toFixed(0) + '%' : '–');
+  const n = (v: any) => Number(v) || 0;
+  const d = (v: number, gp: number) => (per === 'game' ? (gp ? (n(v) / gp).toFixed(1) : '–') : String(Math.round(n(v))));
+  const pctS = (m: number, a: number) => (n(a) ? (100 * n(m) / n(a)).toFixed(0) + '%' : '–');
+  // Every column header sorts the table by that stat (per game, or totals).
+  const cols: { k: string; l: string; v: (r: PlayerLine) => number; show: (r: PlayerLine) => string; cls?: string }[] = [
+    { k: 'gp', l: 'GP', v: (r) => n(r.gp), show: (r) => String(r.gp) },
+    { k: 'min', l: 'MIN', v: (r) => n(r.min) / (per === 'game' ? r.gp || 1 : 1), show: (r) => d(r.min, r.gp) },
+    { k: 'pts', l: 'PTS', v: (r) => n(r.pts) / (per === 'game' ? r.gp || 1 : 1), show: (r) => d(r.pts, r.gp) },
+    { k: 'reb', l: 'REB', v: (r) => n(r.reb) / (per === 'game' ? r.gp || 1 : 1), show: (r) => d(r.reb, r.gp) },
+    { k: 'ast', l: 'AST', v: (r) => n(r.ast) / (per === 'game' ? r.gp || 1 : 1), show: (r) => d(r.ast, r.gp) },
+    { k: 'stl', l: 'STL', v: (r) => n(r.stl) / (per === 'game' ? r.gp || 1 : 1), show: (r) => d(r.stl, r.gp), cls: 'hide-sm' },
+    { k: 'blk', l: 'BLK', v: (r) => n(r.blk) / (per === 'game' ? r.gp || 1 : 1), show: (r) => d(r.blk, r.gp), cls: 'hide-sm' },
+    { k: 'fg', l: 'FG%', v: (r) => (n(r.fga) >= 10 ? n(r.fgm) / n(r.fga) : -1), show: (r) => pctS(r.fgm, r.fga) },
+    { k: 'tp', l: '3P%', v: (r) => (n(r.tpa) >= 5 ? n(r.tpm) / n(r.tpa) : -1), show: (r) => pctS(r.tpm, r.tpa) },
+    { k: 'ft', l: 'FT%', v: (r) => (n(r.fta) >= 5 ? n(r.ftm) / n(r.fta) : -1), show: (r) => pctS(r.ftm, r.fta), cls: 'hide-sm' },
+  ];
+  const sc = cols.find((c) => c.k === sortK) ?? cols[2];
+  const list = rows.filter((r) => r.gp > 0).sort((a, b) => sc.v(b) - sc.v(a));
   return (
     <>
       <div className="chips">
         <button className={`chip ${per === 'game' ? 'on' : ''}`} onClick={() => setPer('game')}>Per game</button>
         <button className={`chip ${per === 'total' ? 'on' : ''}`} onClick={() => setPer('total')}>Totals</button>
+        <span className="muted sm" style={{ alignSelf: 'center' }}>Tap a column to sort</span>
       </div>
       <div className="tblwrap">
-        <table className="box">
-          <thead><tr><th>Player</th><th>GP</th><th>MIN</th><th>PTS</th><th>REB</th><th>AST</th><th className="hide-sm">STL</th><th className="hide-sm">BLK</th><th>FG%</th><th>3P%</th><th className="hide-sm">FT%</th></tr></thead>
+        <table className="box sortable">
+          <thead><tr><th>Player</th>{cols.map((c) => <th key={c.k} className={`${c.cls ?? ''} ${c.k === sortK ? 'sorted' : ''}`} onClick={() => setSortK(c.k)}>{c.l}{c.k === sortK ? ' ↓' : ''}</th>)}</tr></thead>
           <tbody>
-            {rows.filter((r) => r.gp > 0).map((r) => (
+            {list.map((r) => (
               <tr key={r.player_id}>
                 <td style={{ fontWeight: 600 }}><Link to={`${base}/player/${r.player_id}`}>{r.display_name}</Link>{r.gs > 0 && <span className="muted sm"> {r.gs} GS</span>}</td>
-                <td>{r.gp}</td><td>{d(r.min, r.gp)}</td><td style={{ fontWeight: 700 }}>{d(r.pts, r.gp)}</td><td>{d(r.reb, r.gp)}</td><td>{d(r.ast, r.gp)}</td>
-                <td className="hide-sm">{d(r.stl, r.gp)}</td><td className="hide-sm">{d(r.blk, r.gp)}</td>
-                <td>{pctS(r.fgm, r.fga)}</td><td>{pctS(r.tpm, r.tpa)}</td><td className="hide-sm">{pctS(r.ftm, r.fta)}</td>
+                {cols.map((c) => <td key={c.k} className={c.cls} style={c.k === sortK ? { fontWeight: 700 } : undefined}>{c.show(r)}</td>)}
               </tr>
             ))}
           </tbody>

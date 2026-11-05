@@ -201,7 +201,7 @@ function TopTen({ d }: { d: SportDay }) {
           })}
         </tbody>
       </table>
-      <Link to={base} className="btn ghost" style={{ marginTop: 10, width: '100%', justifyContent: 'center' }}>All {d.rs.length} teams</Link>
+      <Link to={`${base}/rankings`} className="btn ghost" style={{ marginTop: 10, width: '100%', justifyContent: 'center' }}>All {d.rs.length} teams</Link>
     </div>
   );
 }

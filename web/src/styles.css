@@ -251,3 +251,51 @@ h3{font-family:var(--display);font-weight:700;font-size:20px;margin:0 0 8px}
 .fbar{display:flex;height:6px}
 .ovr{display:inline-block;min-width:34px;text-align:center;font-family:var(--display);font-weight:800;font-size:17px;padding:2px 6px;border-radius:7px;background:var(--soft)}
 @media(max-width:420px){ .fname{font-size:20px} .fovr{gap:4px} .fovr span{min-width:32px;padding:3px 5px} .fovr b{font-size:17px} }
+
+/* sport sub-tabs */
+.subtabs{max-width:1180px;margin:0 auto;display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;padding:0 12px 8px}
+.subtabs::-webkit-scrollbar{display:none}
+.subtabs a{white-space:nowrap;padding:8px 13px;border-radius:999px;font-weight:700;font-size:15px;color:rgba(255,255,255,.7)}
+.subtabs a.active{background:#fff;color:#0B1220}
+.sheet-row.on{background:var(--ink);color:var(--bg)}
+button.sheet-row{border:0;font:inherit;font-weight:600;font-size:17px;color:var(--ink);cursor:pointer;text-align:left;width:100%}
+
+.box.sortable th{cursor:pointer;user-select:none}
+.box th.sorted{color:var(--ink)}
+
+/* sport sub-tabs */
+.subtabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;max-width:1180px;margin:0 auto;padding:0 12px 8px}
+.subtabs::-webkit-scrollbar{display:none}
+.subtabs a{flex:0 0 auto;padding:8px 13px;border-radius:999px;font-weight:700;font-size:15px;color:rgba(255,255,255,.7);white-space:nowrap}
+.subtabs a.active{background:#fff;color:#0B1220}
+/* sport hub */
+.hub-sec{margin-bottom:18px}
+.hub-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:8px}
+.hub-head h2{margin:0;font-size:22px}
+.hub-head a{color:var(--cool);font-weight:700;font-size:14px;white-space:nowrap}
+.hscroll{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -16px;padding:4px 16px 8px;scrollbar-width:none}
+.hscroll::-webkit-scrollbar{display:none}
+.hcard{flex:0 0 min(300px,82vw);scroll-snap-align:start}
+.ovr-chip{display:inline-block;min-width:34px;padding:2px 6px;border-radius:6px;background:var(--soft);font-weight:800;text-align:center}
+.leader-grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}
+.leader-t{font-weight:800;margin-bottom:4px}
+.leader-row{display:grid;grid-template-columns:22px 20px 1fr auto;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid var(--rule);font-size:15px}
+.leader-n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.conf-bar{display:grid;grid-template-columns:96px 1fr 52px;gap:10px;align-items:center;padding:5px 0}
+.conf-n{font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.conf-track{height:12px;background:var(--soft);border-radius:6px;overflow:hidden}
+.conf-track span{display:block;height:100%;border-radius:6px}
+/* all-sports scores */
+.daystrip{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 -16px 14px;padding:0 16px}
+.daystrip::-webkit-scrollbar{display:none}
+.daystrip button{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:56px;padding:8px 6px;border-radius:12px;border:1px solid var(--rule);background:var(--panel);color:var(--muted);font:inherit;cursor:pointer}
+.daystrip button span{font-size:12px;font-weight:700}
+.daystrip button b{font-size:18px;color:var(--ink)}
+.daystrip button.on{background:var(--ink);border-color:var(--ink)}
+.daystrip button.on span,.daystrip button.on b{color:var(--bg)}
+.daystrip input{flex:0 0 auto;font:inherit;border-radius:12px;border:1px solid var(--rule);background:var(--panel);color:var(--ink);padding:0 8px;width:44px;opacity:.8}
+.score-sec{margin-bottom:18px}
+.score-sec-head{display:flex;align-items:baseline;gap:10px;width:100%;border:0;background:none;color:inherit;font:inherit;font-size:20px;padding:6px 0 10px;cursor:pointer;text-align:left}
+.score-sec-head .chev{margin-left:auto;font-size:16px;color:var(--muted)}
+
+@media(max-width:640px){ .tbl .team b, .tbl td.l a b{max-width:30vw;display:inline-block;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom;white-space:nowrap} .tbl td.l .team img{width:18px;height:18px} }
