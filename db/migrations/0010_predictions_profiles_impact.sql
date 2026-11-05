@@ -42,8 +42,7 @@ do $$ begin
 end $$;
 
 -- 3. Team profile: records, splits, luck, schedule strength and the box-score rates behind the rating.
-drop materialized view if exists mv_team_profile;
-create materialized view mv_team_profile as
+create materialized view if not exists mv_team_profile as
 with r as (
   select * from v_ratings_latest
 ),
