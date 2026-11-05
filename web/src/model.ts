@@ -16,8 +16,11 @@ export interface Prediction { aPts: number; bPts: number; poss: number; margin: 
 export function predict(a: Rating, b: Rating, L: League, site: 1 | 0 | -1, sport = 'mbb'): Prediction {
   const m = sportMeta(sport);
   const poss = (a.tempo * b.tempo) / L.tempo;
-  const aEff = (a.adj_off * b.adj_def) / L.off + site * m.hcaPerSide;
-  const bEff = (b.adj_off * a.adj_def) / L.off - site * m.hcaPerSide;
+  // Baseball and softball ratings are additive (offense + opponent's defense - average); the others multiply.
+  // Must match the ratings engine (src/model/engine.ts predictMargin).
+  const additive = sport === 'bsb' || sport === 'sb';
+  const aEff = (additive ? a.adj_off + b.adj_def - L.off : (a.adj_off * b.adj_def) / L.off) + site * m.hcaPerSide;
+  const bEff = (additive ? b.adj_off + a.adj_def - L.off : (b.adj_off * a.adj_def) / L.off) - site * m.hcaPerSide;
   const aPts = (aEff * poss) / m.scale, bPts = (bEff * poss) / m.scale;
   const margin = aPts - bPts;
   return { aPts, bPts, poss, margin, aWin: normCdf(margin / m.sd) };

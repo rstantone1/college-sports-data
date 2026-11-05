@@ -1,0 +1,44 @@
+name: Model research
+
+# Manual: export each sport's seasons into data packs, run the walk-forward backtest with current settings, and
+# search for better settings on the training seasons (scored on held-out test seasons). Packs and reports are
+# uploaded as an artifact.
+on:
+  workflow_dispatch:
+    inputs:
+      tune:
+        description: "Run the settings search too (1/0)"
+        required: false
+        default: "1"
+
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { sport: mbb, from: 2012, to: 2026, train: 2013-2021, test: 2022-2026 }
+          - { sport: wbb, from: 2012, to: 2026, train: 2013-2021, test: 2022-2026 }
+          - { sport: cfb, from: 2014, to: 2026, train: 2015-2021, test: 2022-2026 }
+          - { sport: bsb, from: 2016, to: 2026, train: 2017-2022, test: 2023-2026 }
+          - { sport: sb, from: 2016, to: 2026, train: 2017-2022, test: 2023-2026 }
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: mkdir -p out && npx tsx src/tune.ts export --sport=${{ matrix.sport }} --from=${{ matrix.from }} --to=${{ matrix.to }} --out=out/${{ matrix.sport }}.json.gz | tee out/${{ matrix.sport }}-export.txt
+      - run: npx tsx src/tune.ts test --pack=out/${{ matrix.sport }}.json.gz --train=${{ matrix.train }} --test=${{ matrix.test }} | tee out/${{ matrix.sport }}-baseline.txt
+      - if: inputs.tune == '1'
+        run: npx tsx src/tune.ts tune --pack=out/${{ matrix.sport }}.json.gz --train=${{ matrix.train }} --test=${{ matrix.test }} --out=out/${{ matrix.sport }}-params.json | tee out/${{ matrix.sport }}-tune.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: research-${{ matrix.sport }}
+          path: out/
+          retention-days: 30
