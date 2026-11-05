@@ -11,6 +11,10 @@ on:
       season:
         description: "Season year"
         required: true
+      step:
+        description: "Days between snapshots (7 for a long season, 1 early in a short one)"
+        required: false
+        default: "7"
 
 jobs:
   snap:
@@ -26,4 +30,4 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx tsx src/cli.ts snapshots --sport=${{ inputs.sport }} --season=${{ inputs.season }}
+      - run: npx tsx src/cli.ts snapshots --sport=${{ inputs.sport }} --season=${{ inputs.season }} --step=${{ inputs.step }}

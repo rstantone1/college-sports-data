@@ -161,8 +161,8 @@ async function main() {
       const first = (await q<{ d: string | null }>(`select min(start_time)::date::text d from games where sport_id=$1 and season_year=$2 and completed`, [s.id, y]))[0]?.d;
       if (!first) { console.log(`${s.id} ${y}: no games yet`); break; }
       const today = new Date().toISOString().slice(0, 10);
-      let n = 0;
-      for (let t = Date.parse(first) + 7 * 864e5; ; t += 7 * 864e5) {
+      let n = 0; const step = Number(args.step ?? 7) * 864e5;
+      for (let t = Date.parse(first) + step; ; t += step) {
         const d = new Date(t).toISOString().slice(0, 10);
         if (d >= today) break;
         const r = await computeRatings(s, y, { until: new Date(t + 864e5) });
