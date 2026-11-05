@@ -26,6 +26,7 @@ jobs:
         sport: [mbb, wbb, bsb, sb, cfb]
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      PG_POOL_MAX: "2"
       CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
       FETCH_DELAY_MS: "350"
     steps:

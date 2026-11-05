@@ -15,7 +15,8 @@ else console.log(`db: ${url.replace(/:\/\/([^:]+):[^@]+@/, '://$1:****@')}`);
 
 export const pool = new Pool({
   connectionString: url,
-  max: 8,
+  // Supabase's pooler allows 15 sessions in total, shared by every job running at once. Keep each job small.
+  max: Number(process.env.PG_POOL_MAX ?? 4),
   ssl: isLocal ? undefined : { rejectUnauthorized: false },
   connectionTimeoutMillis: 20000,
 });
