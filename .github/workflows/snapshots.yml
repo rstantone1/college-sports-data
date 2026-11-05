@@ -1,0 +1,29 @@
+name: Weekly snapshots
+
+# Manual: rebuild the ratings as they stood at the end of each past week of a season (using only games played by
+# then), so rank changes and trend lines have history from day one.
+on:
+  workflow_dispatch:
+    inputs:
+      sport:
+        description: "Sport id"
+        required: true
+      season:
+        description: "Season year"
+        required: true
+
+jobs:
+  snap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      PG_POOL_MAX: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsx src/cli.ts snapshots --sport=${{ inputs.sport }} --season=${{ inputs.season }}

@@ -154,6 +154,25 @@ async function main() {
       break;
     }
 
+    // Weekly look-backs for the current season: the ratings as they stood at the end of each past week, using only
+    // games played by then. Powers "since you were last here" and the rating-trend lines. Safe to re-run.
+    case 'snapshots': {
+      const s = sport(args.sport); const y = Number(args.season ?? season(s.id));
+      const first = (await q<{ d: string | null }>(`select min(start_time)::date::text d from games where sport_id=$1 and season_year=$2 and completed`, [s.id, y]))[0]?.d;
+      if (!first) { console.log(`${s.id} ${y}: no games yet`); break; }
+      const today = new Date().toISOString().slice(0, 10);
+      let n = 0;
+      for (let t = Date.parse(first) + 7 * 864e5; ; t += 7 * 864e5) {
+        const d = new Date(t).toISOString().slice(0, 10);
+        if (d >= today) break;
+        const r = await computeRatings(s, y, { until: new Date(t + 864e5) });
+        await saveRatings(s, y, d, r.ratings); n++;
+        console.log(`${s.id} ${y}: saved ${d} (${r.games} games)`);
+      }
+      console.log(`${s.id} ${y}: ${n} weekly snapshots`);
+      break;
+    }
+
     case 'rollups': { const t = Date.now(); await refreshRollups(); console.log(`stats tables rebuilt in ${Math.round((Date.now() - t) / 1000)}s`); break; }
 
     case 'status': {
