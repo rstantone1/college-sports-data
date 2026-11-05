@@ -8,7 +8,7 @@ import { sportModel } from './model/pack.js';
 import { MODEL_VERSION } from './ratings/efficiency.js';
 
 // Spread of real results around the prediction, per sport (fitted on 2025-26; re-fit by the tuner).
-export const RESULT_SD: Record<string, number> = { mbb: 11.3, wbb: 12.5, cfb: 16.8, bsb: 4.3, sb: 3.8 };
+export const RESULT_SD: Record<string, number> = { mbb: 11.3, wbb: 12.5, cfb: 16.8, bsb: 5.9, sb: 4.7 };
 
 // What a typical team from outside the division is worth: set from the margin rated teams beat them by.
 const OUTSIDER_MARGIN: Record<string, number> = { mbb: 40, wbb: 45, cfb: 29, bsb: 9, sb: 5.3 };

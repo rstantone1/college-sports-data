@@ -23,9 +23,9 @@ export const SPORTS: Record<string, SportMeta> = {
   cfb: { id: 'cfb', short: 'Football', long: 'Football (FBS)', seasons: [{ year: 2026, label: '2026' }],
     scale: 10, typicalUnits: 11.5, unitWord: 'drives', pointWord: 'points', effLabel: 'points per 10 drives', hcaPerSide: 0.65, sd: 16.8, venue: 'field', hoops: false },
   bsb: { id: 'bsb', short: 'Baseball', long: 'Baseball', seasons: [{ year: 2026, label: '2026' }],
-    scale: 9, typicalUnits: 9, unitWord: 'innings', pointWord: 'runs', effLabel: 'runs per 9 innings', hcaPerSide: 0.15, sd: 4.3, venue: 'field', hoops: false },
+    scale: 9, typicalUnits: 9, unitWord: 'innings', pointWord: 'runs', effLabel: 'runs per 9 innings', hcaPerSide: 0.15, sd: 5.9, venue: 'field', hoops: false },
   sb: { id: 'sb', short: 'Softball', long: 'Softball', seasons: [{ year: 2026, label: '2026' }],
-    scale: 7, typicalUnits: 7, unitWord: 'innings', pointWord: 'runs', effLabel: 'runs per 7 innings', hcaPerSide: 0.15, sd: 3.8, venue: 'field', hoops: false },
+    scale: 7, typicalUnits: 7, unitWord: 'innings', pointWord: 'runs', effLabel: 'runs per 7 innings', hcaPerSide: 0.15, sd: 4.7, venue: 'field', hoops: false },
 };
 
 export const sportMeta = (id?: string) => SPORTS[id ?? ''] ?? SPORTS.mbb;

@@ -14,6 +14,8 @@ const BY_SPORT: Record<string, Partial<Params>> = {
   mbb: { priorGames: 6, regress: 0.1, hcaWeight: 500 },
   wbb: { priorGames: 4, regress: 0.1, hcaWeight: 500 },
   cfb: { priorGames: 3, regress: 0.2, hcaWeight: 500 },
+  bsb: { priorGames: 12, regress: 0.1, hcaWeight: 2000 },
+  sb: { priorGames: 8, regress: 0.1, hcaWeight: 500 },
 };
 
 export function paramsFor(sport: string): Params {
