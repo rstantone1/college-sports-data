@@ -95,7 +95,7 @@ export async function ingestNcaaGames(s: SportConfig, seasonYear: number, opts: 
   let n = 0, finals = 0;
   for (const d of dates) {
     const y = d.getUTCFullYear(), m = pad(d.getUTCMonth() + 1), dd = pad(d.getUTCDate());
-    const fresh = (until.getTime() - d.getTime()) / 864e5 <= (opts.refreshDays ?? 3);
+    const fresh = (Date.now() - d.getTime()) / 864e5 <= (opts.refreshDays ?? 3);
     const sb = await cached('scoreboard', `${s.id}:${y}${m}${dd}`, `scoreboard/${code}/d1/${y}/${m}/${dd}/all-conf`, fresh);
     for (const w of sb?.games ?? []) {
       const g = w.game;

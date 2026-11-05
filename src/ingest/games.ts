@@ -53,7 +53,7 @@ export async function ingestGames(s: SportConfig, seasonYear: number, opts: { un
   const dates = seasonDates(s, seasonYear, until);
   let games = 0, finals = 0;
   for (const d of dates) {
-    const ageDays = (until.getTime() - d.getTime()) / 86_400_000;
+    const ageDays = (Date.now() - d.getTime()) / 86_400_000;   // days before today (negative = upcoming)
     const fresh = ageDays <= refreshDays;
     const sb = await espn.scoreboard(s, yyyymmdd(d), fresh);
     for (const ev of sb?.events ?? []) {

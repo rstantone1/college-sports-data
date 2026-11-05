@@ -4,7 +4,8 @@ import { ingestTeams, addIndependents } from './ingest/teams.js';
 import { ingestGames } from './ingest/games.js';
 import { ingestBoxScores, ingestOdds } from './ingest/boxscores.js';
 import { ingestRosters } from './ingest/rosters.js';
-import { computeRatings, saveRatings } from './ratings/efficiency.js';
+import { computeRatings, saveRatings, saveImpacts } from './ratings/efficiency.js';
+import { writePredictions } from './predictions.js';
 import { ingestNcaaGames, ingestNcaaBox } from './ingest/ncaa.js';
 import { ensureSport } from './ingest/teams.js';
 import type { SportConfig } from './sports.js';
@@ -38,7 +39,8 @@ async function main() {
     case 'daily': {
       const s = sport(args.sport); const y = season(s.id);
       await teamsFor(s, y);
-      await gamesFor(s, y, { refreshDays: 3 });
+      // Sweep three days ahead so upcoming games are in the database and get a pick before they start.
+      await gamesFor(s, y, { refreshDays: 3, until: new Date(Date.now() + 3 * 864e5) });
       await boxFor(s, y, { plays: args.plays === '1' });
       // Official rosters (height, class, hometown; and players who haven't appeared in a box score yet). ESPN sports only.
       if (!isNcaa(s)) { try { await ingestRosters(s, y); } catch (e) { console.warn('rosters skipped:', (e as Error).message); } }
@@ -46,7 +48,11 @@ async function main() {
       // Off-season: stamp ratings with the last game date instead of today, so history doesn't fill with copies.
       const lastGame = (await q<{ d: string | null }>(`select max(start_time)::date::text d from games where sport_id=$1 and season_year=$2 and completed`, [s.id, y]))[0]?.d;
       const today = isoDate(new Date());
-      await saveRatings(s, y, lastGame && lastGame < today ? lastGame : today, r.ratings);
+      const asOf = lastGame && lastGame < today ? lastGame : today;
+      await saveRatings(s, y, asOf, r.ratings);
+      await saveImpacts(s, y, r.impacts);
+      // Picks for the next few days, written once and never changed.
+      try { await writePredictions(s, y, r.rated, asOf); } catch (e) { console.warn('predictions skipped:', (e as Error).message); }
       try { await q(`select refresh_rollups()`); } catch (e) { console.warn('rollup refresh skipped:', (e as Error).message); }
       console.log(`${s.id} ${y}: ratings saved for ${r.ratings.length} teams (${r.games} games, ${r.skipped} skipped, HCA ${r.hca.toFixed(2)}, league ${r.leagueAvg.toFixed(1)})`);
       break;
@@ -87,6 +93,21 @@ async function main() {
          where r.sport_id=$1 and r.season_year=$2 and r.as_of=(select max(as_of) from ratings where sport_id=$1 and season_year=$2)
          order by r.rank limit $3`, [s.id, y, n]);
       console.table(rows);
+      break;
+    }
+
+    // Write picks for upcoming games without re-ingesting anything.
+    case 'predict': {
+      const s = sport(args.sport); const y = season(s.id);
+      const r = await computeRatings(s, y);
+      await writePredictions(s, y, r.rated, isoDate(new Date()), args.days ? Number(args.days) : 3);
+      break;
+    }
+    case 'impact': {
+      const s = sport(args.sport); const y = season(s.id);
+      const r = await computeRatings(s, y);
+      await saveImpacts(s, y, r.impacts);
+      console.log(`${s.id} ${y}: impacts saved for ${r.impacts.size} teams`);
       break;
     }
 

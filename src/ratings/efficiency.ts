@@ -11,7 +11,7 @@
 
 import { q } from '../db.js';
 import type { SportConfig } from '../sports.js';
-import { rate, type Params, type Prior } from '../model/engine.js';
+import { rate, type Params, type Prior, type Impact } from '../model/engine.js';
 import { loadSeason, sportModel } from '../model/pack.js';
 import { paramsFor } from '../model/params.js';
 
@@ -37,7 +37,20 @@ export async function computeRatings(s: SportConfig, seasonYear: number, opts: {
   const ratings: RatingRow[] = [...r.ratings.values()].map((x) => ({
     team_id: x.team, games: x.games, adj_off: x.o, adj_def: x.d, adj_em: x.em, tempo: x.t, raw_off: x.rawO, raw_def: x.rawD,
   }));
-  return { ratings, leagueAvg: r.L, hca: r.hca, games: r.games, skipped: season.games.filter((g) => !g.d1).length };
+  return { ratings, leagueAvg: r.L, hca: r.hca, games: r.games, skipped: season.games.filter((g) => !g.d1).length, impacts: r.impacts, league: { L: r.L, LT: r.LT }, rated: r };
+}
+
+// Save how much each game moved each team's rating (feeds "why is this team ranked here").
+export async function saveImpacts(s: SportConfig, seasonYear: number, impacts: Map<number, Impact[]>) {
+  const rows: [number, number, number, number][] = [];
+  for (const [team, list] of impacts) for (const x of list) rows.push([team, x.game, x.adjEm, x.contrib]);
+  if (!rows.length) return;
+  await q(`delete from team_game_impact where sport_id=$1 and season_year=$2`, [s.id, seasonYear]);
+  for (let i = 0; i < rows.length; i += 500) {
+    const chunk = rows.slice(i, i + 500);
+    const vals = chunk.map((_, k) => `($1,$2,$${k * 4 + 3},$${k * 4 + 4},$${k * 4 + 5},$${k * 4 + 6})`).join(',');
+    await q(`insert into team_game_impact(sport_id, season_year, team_id, game_id, game_adj_em, contrib) values ${vals}`, [s.id, seasonYear, ...chunk.flat()]);
+  }
 }
 
 export async function saveRatings(s: SportConfig, seasonYear: number, asOf: string, rows: RatingRow[]) {

@@ -40,21 +40,22 @@ export const DEFAULT_PARAMS: Params = { priorGames: 6, regress: 0.5, halfLife: I
 
 export interface Rating { team: number; games: number; o: number; d: number; em: number; t: number; rawO: number; rawD: number }
 export interface Prior { o: number; d: number; t: number } // last season's final, in last season's units
-export interface Rated { ratings: Map<number, Rating>; L: number; LT: number; hca: number; games: number }
+export interface Impact { game: number; adjEm: number; contrib: number }
+export interface Rated { ratings: Map<number, Rating>; L: number; LT: number; hca: number; games: number; impacts: Map<number, Impact[]> }
 
 export function rate(m: SportModel, games: PackGame[], members: number[], prev: Map<number, Prior> | null, p: Params, asOf?: number): Rated {
   const additive = m.unit === 'inning' || m.unit === 'minute';
-  const tg: { team: number; opp: number; pts: number; oppPts: number; units: number; home: number; rf: number; w: number }[] = [];
+  const tg: { game: number; team: number; opp: number; pts: number; oppPts: number; units: number; home: number; rf: number; w: number }[] = [];
   const now = asOf ?? Math.max(0, ...games.map((g) => g.t));
   for (const g of games) {
     if (!g.d1) continue;
     const w = Number.isFinite(p.halfLife) ? Math.pow(0.5, Math.max(0, now - g.t) / 864e5 / p.halfLife) : 1;
     const home = g.n ? 0 : 1;
-    tg.push({ team: g.h, opp: g.a, pts: g.hs, oppPts: g.as, units: g.uh, home, rf: g.rf, w });
-    tg.push({ team: g.a, opp: g.h, pts: g.as, oppPts: g.hs, units: g.ua, home: -home, rf: g.rf, w });
+    tg.push({ game: g.id, team: g.h, opp: g.a, pts: g.hs, oppPts: g.as, units: g.uh, home, rf: g.rf, w });
+    tg.push({ game: g.id, team: g.a, opp: g.h, pts: g.as, oppPts: g.hs, units: g.ua, home: -home, rf: g.rf, w });
   }
   const teams = [...new Set([...tg.map((x) => x.team), ...members])];
-  if (!teams.length) return { ratings: new Map(), L: 0, LT: 0, hca: 0, games: 0 };
+  if (!teams.length) return { ratings: new Map(), L: 0, LT: 0, hca: 0, games: 0, impacts: new Map() };
 
   // League level: from this season's games so far, or from last season if none have been played yet.
   let L: number, LT: number;
@@ -64,7 +65,7 @@ export function rate(m: SportModel, games: PackGame[], members: number[], prev: 
   } else if (prev && prev.size) {
     const ps = [...prev.values()];
     L = ps.reduce((a, x) => a + x.o, 0) / ps.length; LT = ps.reduce((a, x) => a + x.t, 0) / ps.length;
-  } else return { ratings: new Map(), L: 0, LT: 0, hca: 0, games: 0 };
+  } else return { ratings: new Map(), L: 0, LT: 0, hca: 0, games: 0, impacts: new Map() };
 
   // Prior: last season's rating relative to last season's average, regressed, re-expressed at this season's level.
   const prior = new Map<number, Prior>();
@@ -132,16 +133,29 @@ export function rate(m: SportModel, games: PackGame[], members: number[], prev: 
   }
 
   const ratings = new Map<number, Rating>();
+  const impacts = new Map<number, Impact[]>();
   for (const t of teams) {
     const gs = byTeam.get(t)!;
     const u = gs.reduce((a, x) => a + x.units, 0);
+    const em = adjO.get(t)! - adjD.get(t)!;
     ratings.set(t, {
-      team: t, games: gs.length, o: adjO.get(t)!, d: adjD.get(t)!, em: adjO.get(t)! - adjD.get(t)!, t: adjT.get(t)!,
+      team: t, games: gs.length, o: adjO.get(t)!, d: adjD.get(t)!, em, t: adjT.get(t)!,
       rawO: u ? (gs.reduce((a, x) => a + x.pts, 0) / u) * m.scale : adjO.get(t)!,
       rawD: u ? (gs.reduce((a, x) => a + x.oppPts, 0) / u) * m.scale : adjD.get(t)!,
     });
+    // What each game said on its own (adjusted for opponent and venue), and how much the rating would move
+    // without it. The rating is the weighted mean of these plus the prior, so a game's pull is its distance
+    // from the mean divided by the weight that remains.
+    const sw = gs.reduce((a, x) => a + x.w, 0);
+    impacts.set(t, gs.map((x) => {
+      const offEff = clamp((x.pts / x.units) * m.scale - x.home * hca), defEff = clamp((x.oppPts / x.units) * m.scale + x.home * hca);
+      const gO = additive ? offEff - (adjD.get(x.opp)! - L) : (offEff * L) / adjD.get(x.opp)!;
+      const gD = additive ? defEff - (adjO.get(x.opp)! - L) : (defEff * L) / adjO.get(x.opp)!;
+      const adjEm = gO - gD;
+      return { game: x.game, adjEm, contrib: (x.w * (adjEm - em)) / Math.max(1e-9, sw + p.priorGames - x.w) };
+    }));
   }
-  return { ratings, L, LT, hca, games: tg.length / 2 };
+  return { ratings, L, LT, hca, games: tg.length / 2, impacts };
 }
 
 // Predicted margin (home minus away, in points/runs) and the expected scoring units, from two ratings.
