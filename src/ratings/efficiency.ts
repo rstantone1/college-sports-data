@@ -25,7 +25,7 @@ export interface RatingRow {
   team_id: number; games: number; adj_off: number; adj_def: number; adj_em: number; tempo: number; raw_off: number; raw_def: number;
 }
 
-export async function computeRatings(s: SportConfig, seasonYear: number, opts: { priorGames?: number; d1Only?: boolean } = {}) {
+export async function computeRatings(s: SportConfig, seasonYear: number, opts: { priorGames?: number; d1Only?: boolean; until?: Date; regress?: number } = {}) {
   const scale = s.scoringUnit === 'inning' ? s.regulationLength : SCALE[s.scoringUnit];
   const priorK = opts.priorGames ?? 6;
 
@@ -38,8 +38,9 @@ export async function computeRatings(s: SportConfig, seasonYear: number, opts: {
      left join game_team_stats hts on hts.game_id=g.id and hts.team_id=g.home_team_id
      left join game_team_stats ats on ats.game_id=g.id and ats.team_id=g.away_team_id
      where g.sport_id=$1 and g.season_year=$2 and g.completed and g.home_score is not null and g.away_score is not null
-       and g.home_team_id is not null and g.away_team_id is not null and coalesce(g.season_type, 2) <> 1`,
-    [s.id, seasonYear]);
+       and g.home_team_id is not null and g.away_team_id is not null and coalesce(g.season_type, 2) <> 1
+       and ($3::timestamptz is null or g.start_time < $3)`,
+    [s.id, seasonYear, opts.until ?? null]);
 
   const anyMembership = (await q<{ c: string }>(`select count(*) c from team_seasons ts join teams t on t.id=ts.team_id where t.sport_id=$1 and ts.season_year=$2`, [s.id, seasonYear]))[0].c !== '0';
   const d1Only = opts.d1Only ?? anyMembership;
@@ -106,7 +107,7 @@ export async function computeRatings(s: SportConfig, seasonYear: number, opts: {
   const prevT = prev.length ? prev.reduce((a, r) => a + Number(r.tempo), 0) / prev.length : 0;
   const prior = new Map<number, { o: number; d: number; t: number }>();
   for (const r of prev) {
-    const regress = 0.5;
+    const regress = opts.regress ?? 0.5;
     prior.set(r.team_id, {
       o: L * (1 + regress * (Number(r.adj_off) / prevL - 1)),
       d: L * (1 + regress * (Number(r.adj_def) / prevL - 1)),
