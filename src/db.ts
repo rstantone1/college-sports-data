@@ -21,9 +21,20 @@ export const pool = new Pool({
   connectionTimeoutMillis: 20000,
 });
 
+// If the shared pooler is momentarily full (several jobs at once), wait and try again rather than die.
 export async function q<T = any>(text: string, params: unknown[] = []): Promise<T[]> {
-  const r = await pool.query(text, params);
-  return r.rows as T[];
+  for (let attempt = 1; ; attempt++) {
+    try { const r = await pool.query(text, params); return r.rows as T[]; }
+    catch (e) {
+      const msg = String((e as Error).message ?? e);
+      if (attempt < 8 && /EMAXCONNSESSION|too many clients|remaining connection slots/i.test(msg)) {
+        console.warn(`database busy (${attempt}), retrying in ${attempt * 15}s`);
+        await new Promise((r) => setTimeout(r, attempt * 15000));
+        continue;
+      }
+      throw e;
+    }
+  }
 }
 
 export async function one<T = any>(text: string, params: unknown[] = []): Promise<T | undefined> {
@@ -35,7 +46,11 @@ export async function migrate(dir = join(process.cwd(), 'db', 'migrations')) {
   const files = readdirSync(dir).filter((f) => f.endsWith('.sql')).sort();
   // Several jobs start at once (one per sport). A session lock makes them take turns, and the list of applied
   // migrations is read after the lock is held, so a migration another job just applied is skipped, not re-run.
-  const c = await pool.connect();
+  let c!: import('pg').PoolClient;
+  for (let attempt = 1; ; attempt++) {
+    try { c = await pool.connect(); break; }
+    catch (e) { if (attempt >= 8) throw e; console.warn(`database busy (${attempt}), retrying in ${attempt * 15}s`); await new Promise((r) => setTimeout(r, attempt * 15000)); }
+  }
   try {
     await c.query(`select pg_advisory_lock(727001)`);
     const done = new Set((await c.query<{ name: string }>(`select name from schema_migrations`)).rows.map((r) => r.name));
