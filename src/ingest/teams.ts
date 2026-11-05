@@ -48,7 +48,17 @@ export async function ingestTeams(s: SportConfig, seasonYear: number) {
         `insert into conferences(sport_id, espn_id, name, short_name) values ($1,$2,$3,$4)
          on conflict (sport_id, espn_id) do update set name=excluded.name, short_name=excluded.short_name returning id`,
         [s.id, String(c.id), c.name ?? null, c.shortName ?? c.abbreviation ?? null]);
-      for (const e of c.standings?.entries ?? []) {
+      // Some conferences split into divisions (Sun Belt East/West, ASUN, Big South): their teams sit one or more
+      // levels down, and ESPN doesn't always nest them the same way for every caller. Walk every level; if a
+      // conference still comes back empty, ask for that conference on its own.
+      const walk = (n: any): any[] => [...(n?.standings?.entries ?? []), ...(n?.children ?? []).flatMap(walk)];
+      let entries: any[] = walk(c);
+      if (!entries.length && c.id) {
+        try { entries = walk(await espn.standingsGroup(s, seasonYear, String(c.id))); }
+        catch (e) { console.warn(`${s.id}: ${c.name} standings retry failed: ${(e as Error).message}`); }
+        if (!entries.length) console.warn(`${s.id}: ${c.name} returned no teams for ${seasonYear}`);
+      }
+      for (const e of entries) {
         const espnId = String(e.team?.id);
         let teamId = idByEspn.get(espnId);
         if (!teamId && e.team) { teamId = await upsertTeam(s, e.team); idByEspn.set(espnId, teamId); }
@@ -65,4 +75,17 @@ export async function ingestTeams(s: SportConfig, seasonYear: number) {
     console.warn(`${s.id}: standings unavailable (${(e as Error).message}); conference membership skipped`);
   }
   await q(`insert into seasons(sport_id, year) values ($1,$2) on conflict do nothing`, [s.id, seasonYear]);
+}
+
+// Independents and teams missing from a season's standings: count a team as Division I for the season if it played
+// at least 10 games against teams that are. A Division II school plays two or three D-I games a year at most.
+export async function addIndependents(s: SportConfig, seasonYear: number) {
+  const rows = await q<{ team_id: number; n: string }>(
+    `with m as (select ts.team_id from team_seasons ts join teams t on t.id=ts.team_id where t.sport_id=$1 and ts.season_year=$2),
+     tg as (select home_team_id t, away_team_id o from games where sport_id=$1 and season_year=$2 and completed
+            union all select away_team_id, home_team_id from games where sport_id=$1 and season_year=$2 and completed)
+     select tg.t team_id, count(*) n from tg where tg.o in (select team_id from m) and tg.t not in (select team_id from m) and tg.t is not null
+     group by tg.t having count(*) >= 10`, [s.id, seasonYear]);
+  for (const r of rows) await q(`insert into team_seasons(team_id, season_year, conference_id) values ($1,$2,null) on conflict do nothing`, [r.team_id, seasonYear]);
+  console.log(`${s.id} ${seasonYear}: ${rows.length} independents added`);
 }

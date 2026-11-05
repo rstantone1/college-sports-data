@@ -35,6 +35,11 @@ export async function cached(kind: string, key: string, url: string, fresh = fal
   }
   let payload = await getJson(url);
   if (kind === 'summary') payload = trimSummary(payload);
+  // Historical backfills skip the raw cache (RAW_CACHE=0; CACHE_SUMMARIES=0 skips summaries only): a decade of
+  // responses would fill the database, and the parsed rows are what matter. Re-parsing an old season means
+  // re-downloading it. Team lists and standings are small and always kept.
+  if (kind === 'summary' && process.env.CACHE_SUMMARIES === '0') return payload;
+  if (process.env.RAW_CACHE === '0' && kind !== 'teams' && kind !== 'standings') return payload;
   await q(
     `insert into raw_payloads(source, kind, key, payload) values ('espn', $1, $2, $3)
      on conflict (source, kind, key) do update set payload = excluded.payload, fetched_at = now()`,
@@ -53,6 +58,9 @@ export const espn = {
   roster: (s: SportConfig, teamEspnId: string, fresh = true) =>
     cached('roster', `${s.id}:${teamEspnId}`, `${BASE}/${s.espnPath}/teams/${teamEspnId}/roster`, fresh),
   // Conference membership for a season. Different host path (apis/v2) than the rest.
+  standingsGroup: (s: SportConfig, seasonYear: number, group: string) =>
+    cached('standings', `${s.id}:${seasonYear}:g${group}`,
+      `https://site.api.espn.com/apis/v2/sports/${s.espnPath}/standings?season=${seasonYear}&group=${group}`, true),
   standings: (s: SportConfig, seasonYear: number) =>
     cached('standings', `${s.id}:${seasonYear}`,
       `https://site.api.espn.com/apis/v2/sports/${s.espnPath}/standings?season=${seasonYear}${s.espnGroups ? `&group=${s.espnGroups}` : ''}`, true),

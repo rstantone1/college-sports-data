@@ -1,6 +1,6 @@
 import { migrate, close, q } from './db.js';
 import { sport, seasonYearFor, isoDate, SPORTS } from './sports.js';
-import { ingestTeams } from './ingest/teams.js';
+import { ingestTeams, addIndependents } from './ingest/teams.js';
 import { ingestGames } from './ingest/games.js';
 import { ingestBoxScores, ingestOdds } from './ingest/boxscores.js';
 import { ingestRosters } from './ingest/rosters.js';
@@ -31,6 +31,7 @@ async function main() {
     case 'ingest:games': { const s = sport(args.sport); await gamesFor(s, season(s.id), { until: args.until ? new Date(args.until) : undefined, refreshDays: args.refresh ? Number(args.refresh) : undefined }); break; }
     case 'ingest:box': { const s = sport(args.sport); await boxFor(s, season(s.id), { plays: args.plays === '1', limit: args.limit ? Number(args.limit) : undefined }); break; }
     case 'ingest:odds': { const s = sport(args.sport); await ingestOdds(s, season(s.id), { limit: args.limit ? Number(args.limit) : undefined }); break; }
+    case 'ingest:independents': { const s = sport(args.sport); await addIndependents(s, season(s.id)); break; }
     case 'ingest:rosters': { const s = sport(args.sport); await ingestRosters(s, season(s.id)); break; }
 
     // Full daily refresh for one sport: schedule/scores, new box scores, ratings.
@@ -86,6 +87,23 @@ async function main() {
          where r.sport_id=$1 and r.season_year=$2 and r.as_of=(select max(as_of) from ratings where sport_id=$1 and season_year=$2)
          order by r.rank limit $3`, [s.id, y, n]);
       console.table(rows);
+      break;
+    }
+
+    // Re-rate a run of seasons oldest first (each season's preseason prior is the one before it).
+    case 'rate:history': {
+      const s = sport(args.sport);
+      for (let y = Number(args.from); y <= Number(args.to); y++) {
+        const last = (await q<{ d: string | null }>(`select max(start_time)::date::text d from games where sport_id=$1 and season_year=$2 and completed`, [s.id, y]))[0]?.d;
+        if (!last) { console.log(`${s.id} ${y}: no games, skipped`); continue; }
+        const r = await computeRatings(s, y);
+        await saveRatings(s, y, last, r.ratings);
+        const top = [...r.ratings].sort((a, b) => b.adj_em - a.adj_em).slice(0, 5).map((x) => x.team_id);
+        const names = await q<{ id: number; short_name: string }>(`select id, short_name from teams where id = any($1)`, [top]);
+        const nm = new Map(names.map((x) => [x.id, x.short_name]));
+        console.log(`${s.id} ${y}: ${r.ratings.length} teams, ${r.games} games (${r.skipped} skipped), as of ${last}. Top 5: ${top.map((t) => nm.get(t)).join(', ')}`);
+      }
+      try { await q(`select refresh_rollups()`); } catch { /* local db */ }
       break;
     }
 

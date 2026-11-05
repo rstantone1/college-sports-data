@@ -11,7 +11,11 @@ const lbs = (w?: string) => { const n = parseInt(w ?? '', 10); return Number.isF
 // Official roster pages: height, weight, class, hometown. Fills in what box scores can't.
 export async function ingestRosters(s: SportConfig, seasonYear: number) {
   const teams = await q<{ id: number; espn_id: string; display_name: string }>(
-    `select id, espn_id, display_name from teams where sport_id=$1 and is_active order by id`, [s.id]);
+    `select t.id, t.espn_id, t.display_name from teams t
+     where t.sport_id=$1 and t.is_active
+       and (exists (select 1 from team_seasons ts where ts.team_id=t.id and ts.season_year=$2)
+            or not exists (select 1 from team_seasons ts join teams x on x.id=ts.team_id where x.sport_id=$1 and ts.season_year=$2))
+     order by t.id`, [s.id, seasonYear]);  // Division I members only (the team list includes every division in football)
   let players = 0;
   for (const t of teams) {
     let data: any;

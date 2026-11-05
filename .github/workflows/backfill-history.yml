@@ -1,0 +1,49 @@
+name: Backfill history
+
+# Manual: load many past seasons of one sport in parallel (teams and conferences, schedule, every box score and
+# player line, pregame lines). No play-by-play and no raw-response cache, to keep the database small. Ratings are
+# not computed here: run "Rate history" afterwards, which rates the seasons in order so each season's preseason
+# starting point is the one before it.
+on:
+  workflow_dispatch:
+    inputs:
+      sport:
+        description: "Sport id (mbb, wbb, cfb, bsb, sb)"
+        required: true
+      seasons:
+        description: 'Season years as a JSON list, e.g. [2015,2016,2017] (hoops: 2015 = the 2014-15 season)'
+        required: true
+      parallel:
+        description: "Seasons at once (be polite to the data sources)"
+        required: false
+        default: "3"
+
+jobs:
+  season:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    strategy:
+      fail-fast: false
+      max-parallel: ${{ fromJSON(inputs.parallel) }}
+      matrix:
+        season: ${{ fromJSON(inputs.seasons) }}
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      FETCH_DELAY_MS: "350"
+      RAW_CACHE: "0"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsx src/cli.ts migrate
+      - name: Load season
+        run: |
+          S="--sport=${{ inputs.sport }} --season=${{ matrix.season }}"
+          npx tsx src/cli.ts ingest:teams $S
+          npx tsx src/cli.ts ingest:games $S --refresh=0
+          npx tsx src/cli.ts ingest:box $S --plays=0
+          npx tsx src/cli.ts ingest:independents $S
+          npx tsx src/cli.ts status $S || true

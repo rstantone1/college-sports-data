@@ -27,7 +27,8 @@ async function cached(kind: string, key: string, path: string, fresh: boolean) {
     if (hit) return hit.payload;
   }
   const payload = await get(path);
-  if (payload != null) {
+  // History backfills set RAW_CACHE=0: parsed rows are kept, the raw response isn't.
+  if (payload != null && process.env.RAW_CACHE !== '0') {
     await q(`insert into raw_payloads(source, kind, key, payload) values ('ncaa',$1,$2,$3)
              on conflict (source, kind, key) do update set payload=excluded.payload, fetched_at=now()`,
       [kind, key, JSON.stringify(payload)]);

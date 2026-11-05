@@ -45,6 +45,7 @@ jobs:
           U=""; [ -n "${{ inputs.until }}" ] && U="--until=${{ inputs.until }}"
           npx tsx src/cli.ts ingest:teams $S
           npx tsx src/cli.ts ingest:games $S $U
+          npx tsx src/cli.ts ingest:independents $S
           npx tsx src/cli.ts ingest:box $S --plays=${{ inputs.plays }}
           A=""; [ -n "${{ inputs.until }}" ] && A="--asof=${{ inputs.until }}"
           npx tsx src/cli.ts ratings $S $A
