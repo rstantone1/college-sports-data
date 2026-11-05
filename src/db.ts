@@ -77,3 +77,11 @@ export async function migrate(dir = join(process.cwd(), 'db', 'migrations')) {
 export async function close() {
   await pool.end();
 }
+
+// Rebuild the stats tables. Over years of history this takes minutes, longer than the database's default time
+// limit, so it runs on its own connection with a 30-minute limit.
+export async function refreshRollups() {
+  const c = await pool.connect();
+  try { await c.query(`set statement_timeout = '30min'`); await c.query(`select refresh_rollups()`); }
+  finally { c.release(); }
+}

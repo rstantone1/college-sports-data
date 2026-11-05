@@ -1,4 +1,4 @@
-import { migrate, close, q } from './db.js';
+import { migrate, close, q, refreshRollups } from './db.js';
 import { sport, seasonYearFor, isoDate, SPORTS } from './sports.js';
 import { ingestTeams, addIndependents } from './ingest/teams.js';
 import { ingestGames } from './ingest/games.js';
@@ -54,7 +54,7 @@ async function main() {
       await saveImpacts(s, y, r.impacts);
       // Picks for the next few days, written once and never changed.
       try { await writePredictions(s, y, r.rated, asOf); } catch (e) { console.warn('predictions skipped:', (e as Error).message); }
-      try { await q(`select refresh_rollups()`); } catch (e) { console.warn('rollup refresh skipped:', (e as Error).message); }
+      if (process.env.SKIP_ROLLUPS !== '1') { try { await refreshRollups(); } catch (e) { console.warn('rollup refresh skipped:', (e as Error).message); } }
       console.log(`${s.id} ${y}: ratings saved for ${r.ratings.length} teams (${r.games} games, ${r.skipped} skipped, HCA ${r.hca.toFixed(2)}, league ${r.leagueAvg.toFixed(1)})`);
       break;
     }
@@ -70,7 +70,7 @@ async function main() {
       const last = await q<{ d: string }>(`select max(start_time)::date::text d from games where sport_id=$1 and season_year=$2 and completed`, [s.id, y]);
       const r = await computeRatings(s, y);
       await saveRatings(s, y, last[0].d, r.ratings);
-      try { await q(`select refresh_rollups()`); } catch { /* local db */ }
+      try { await refreshRollups(); } catch { /* local db */ }
       console.log(`${s.id} ${y}: re-rated ${r.ratings.length} teams as of ${last[0].d}`);
       break;
     }
@@ -80,7 +80,7 @@ async function main() {
       const r = await computeRatings(s, y, { priorGames: args.prior ? Number(args.prior) : undefined });
       const asOf = args.asof ?? isoDate(new Date());
       await saveRatings(s, y, asOf, r.ratings);
-      try { await q(`select refresh_rollups()`); } catch (e) { console.warn('rollup refresh skipped:', (e as Error).message); }
+      if (process.env.SKIP_ROLLUPS !== '1') { try { await refreshRollups(); } catch (e) { console.warn('rollup refresh skipped:', (e as Error).message); } }
       console.log(`${s.id} ${y}: ${r.ratings.length} teams rated from ${r.games} games (${r.skipped} skipped). League eff ${r.leagueAvg.toFixed(1)}, home adv ${r.hca.toFixed(2)} per side.`);
       break;
     }
@@ -144,14 +144,17 @@ async function main() {
         if (!last) { console.log(`${s.id} ${y}: no games, skipped`); continue; }
         const r = await computeRatings(s, y);
         await saveRatings(s, y, last, r.ratings);
+        await saveImpacts(s, y, r.impacts);
         const top = [...r.ratings].sort((a, b) => b.adj_em - a.adj_em).slice(0, 5).map((x) => x.team_id);
         const names = await q<{ id: number; short_name: string }>(`select id, short_name from teams where id = any($1)`, [top]);
         const nm = new Map(names.map((x) => [x.id, x.short_name]));
         console.log(`${s.id} ${y}: ${r.ratings.length} teams, ${r.games} games (${r.skipped} skipped), as of ${last}. Top 5: ${top.map((t) => nm.get(t)).join(', ')}`);
       }
-      try { await q(`select refresh_rollups()`); } catch { /* local db */ }
+      try { await refreshRollups(); } catch { /* local db */ }
       break;
     }
+
+    case 'rollups': { const t = Date.now(); await refreshRollups(); console.log(`stats tables rebuilt in ${Math.round((Date.now() - t) / 1000)}s`); break; }
 
     case 'status': {
       const rows = await q(
