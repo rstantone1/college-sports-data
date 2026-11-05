@@ -124,7 +124,7 @@ export function PlayerPage() {
         return (
           <div className="panel" style={{ marginBottom: 16 }}>
             <h3 style={{ marginBottom: 2 }}>What kind of player</h3>
-            <p className="muted sm" style={{ margin: '0 0 10px' }}>Each bar is where {p.display_name.split(' ').slice(-1)[0]} ranks among the {peers.length.toLocaleString()} regulars in {meta.long.toLowerCase()} this season.</p>
+            <p className="muted sm" style={{ margin: '0 0 10px' }}>Each bar is where {p.display_name.split(' ').slice(-1)[0]} ranks among the {peers.length.toLocaleString()} players with real minutes this season.</p>
             <div className="grid g2e"><Bars title="Production, per 40 minutes" rows={prod} /><Bars title="Role and efficiency" rows={eff} /></div>
           </div>
         );
@@ -156,7 +156,7 @@ export function PlayerPage() {
         </div>
         <div className="grid" style={{ alignContent: 'start' }}>
           {meta.hoops && (shots.data?.length ?? 0) > 0 && (
-            <div className="panel"><h3>Shot chart, this season</h3><p className="muted sm">Games where shot locations were logged.</p><ShotChart shots={shots.data!} color={color === '#FFFFFF' ? '#0B1220' : color} title={p.display_name} /></div>
+            <div className="panel"><h3>Shot chart, this season</h3><p className="muted sm">From games where shot locations were tracked.</p><ShotChart shots={shots.data!} color={color === '#FFFFFF' ? '#0B1220' : color} title={p.display_name} /></div>
           )}
           <div className="panel">
             <h3>Career path</h3>

@@ -3,7 +3,7 @@
 export function LineChart({ points, color, height = 160, yLabel, invert = false }: {
   points: { x: string; y: number }[]; color: string; height?: number; yLabel?: string; invert?: boolean;
 }) {
-  if (points.length < 2) return <p className="muted sm">Not enough rating history yet. One point is added each day.</p>;
+  if (points.length < 2) return <p className="muted sm">This fills in as the season goes.</p>;
   const W = 600, H = height, P = 28;
   const ys = points.map((p) => p.y);
   let lo = Math.min(...ys), hi = Math.max(...ys);

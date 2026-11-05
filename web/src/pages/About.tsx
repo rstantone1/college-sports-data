@@ -32,7 +32,7 @@ export function AboutPage() {
         </div>
         <div className="panel">
           <h3>Does it work?</h3>
-          <p>Checked against last season with no knowledge of the tournament: the men's model had champion Michigan #1 and runner-up UConn in its top ten; the women's model had both finalists, UCLA and South Carolina, in its top three.</p>
+          <p>Checked against last season with no knowledge of the tournament: our men's ratings had champion Michigan #1 and runner-up UConn in its top ten; our women's ratings had both finalists, UCLA and South Carolina, in its top three.</p>
           <p className="muted sm" style={{ margin: 0 }}>The Advanced view on the ratings page shows the same numbers per 100 possessions (per 10 drives in football, per 9 innings in baseball), which is how analysts compare teams that play at different speeds. Same ratings, different scale.</p>
         </div>
       </div>

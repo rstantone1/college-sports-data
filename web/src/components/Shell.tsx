@@ -6,7 +6,7 @@ import { SPORTS, sportMeta } from '../sports';
 // Layout: one-row header (sport, search) and, on phones, a bottom tab bar like a native app. Season lives in the
 // sport sheet. The menu has four things; everything else is under More.
 export function Shell({ children }: { children: ReactNode }) {
-  const { sport, season, base, meta } = useCtx();
+  const { sport, season, base, meta, inSport } = useCtx();
   const loc = useLocation();
   const nav = useNavigate();
   const [sheet, setSheet] = useState<null | 'sport' | 'more' | 'search'>(null);
@@ -38,9 +38,11 @@ export function Shell({ children }: { children: ReactNode }) {
     <>
       <header className="top">
         <div className="top-in">
-          <button className="sportbtn" onClick={() => setSheet(sheet === 'sport' ? null : 'sport')} aria-haspopup="dialog" aria-expanded={sheet === 'sport'}>
-            <b>{meta.short}</b><span className="muted">{meta.seasons.find((x) => x.year === season)?.label}</span><i>▾</i>
-          </button>
+          {inSport ? (
+            <button className="sportbtn" onClick={() => setSheet(sheet === 'sport' ? null : 'sport')} aria-haspopup="dialog" aria-expanded={sheet === 'sport'}>
+              <b>{meta.short}</b><span className="muted">{meta.seasons.find((x) => x.year === season)?.label}</span><i>▾</i>
+            </button>
+          ) : <Link to="/" className="brand"><i />Ratings Lab</Link>}
           <nav className="nav desk">
             <NavLink end to="/">Home</NavLink>
             <NavLink to={`${base}/today`}>Scores</NavLink>
@@ -81,10 +83,10 @@ export function Shell({ children }: { children: ReactNode }) {
       <main>{children}</main>
 
       <nav className="tabs phone" aria-label="Main">
-        <NavLink end to="/" className={onHome ? 'active' : ''}><span className="ic">⌂</span>Home</NavLink>
-        <NavLink to={`${base}/today`} className={onToday ? 'active' : ''}><span className="ic">◷</span>Scores</NavLink>
-        <NavLink end to={base} className={onRank ? 'active' : ''}><span className="ic">☰</span>Rankings</NavLink>
-        <button className={moreOn ? 'active' : ''} onClick={() => setSheet(sheet === 'more' ? null : 'more')}><span className="ic">⋯</span>More</button>
+        <NavLink end to="/" className={onHome ? 'active' : ''}><Icon d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" />Home</NavLink>
+        <NavLink to={`${base}/today`} className={onToday ? 'active' : ''}><Icon d="M4 5h16v14H4zM4 9h16M8 3v4M16 3v4" />Scores</NavLink>
+        <NavLink end to={base} className={onRank ? 'active' : ''}><Icon d="M5 20V10M12 20V4M19 20v-7" />Rankings</NavLink>
+        <button className={moreOn ? 'active' : ''} onClick={() => setSheet(sheet === 'more' ? null : 'more')}><Icon d="M4 6h16M4 12h16M4 18h16" />More</button>
       </nav>
     </>
   );
@@ -121,7 +123,7 @@ function TeamSearch({ autoFocus, big }: { autoFocus?: boolean; big?: boolean }) 
   }, [autoFocus]);
   return (
     <div className={`search ${big ? 'big' : ''}`}>
-      <input ref={ref} value={q} placeholder={big ? 'Team name' : 'Find a team  /'} aria-label="Find a team"
+      <input ref={ref} value={q} placeholder={big ? 'Team name' : 'Find a team'} aria-label="Find a team"
         onChange={(e) => { setQ(e.target.value); setHi(0); }}
         onKeyDown={(e) => {
           if (e.key === 'ArrowDown') { e.preventDefault(); setHi((h) => Math.min(h + 1, hits.length - 1)); }
@@ -185,4 +187,8 @@ export function TeamCell({ name, logo, color, sub }: { name: string; logo?: stri
       <b>{name}</b>{sub ? <span className="muted sm">{sub}</span> : null}
     </span>
   );
+}
+
+function Icon({ d }: { d: string }) {
+  return <svg className="ic" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={d} /></svg>;
 }

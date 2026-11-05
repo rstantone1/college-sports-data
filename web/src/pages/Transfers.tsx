@@ -23,7 +23,7 @@ export function TransfersPage() {
   const [conf, setConf] = useState('All');
   const byId = useMemo(() => new Map((R.data ?? []).map((r) => [r.team_id, r])), [R.data]);
 
-  if (!meta.hoops) return <div className="panel empty"><h2>Transfer tracking covers basketball for now.</h2><p>Baseball and softball box scores don't carry stable player ids yet, so moves can't be matched reliably.</p></div>;
+  if (!meta.hoops) return <div className="panel empty"><h2>Transfer tracking covers basketball for now.</h2><p>Transfer tracking for baseball and softball is coming soon.</p></div>;
   if (t.loading || R.loading) return <Loading />;
   if (t.error) return <ErrorBox msg={t.error} />;
 
@@ -41,7 +41,7 @@ export function TransfersPage() {
   return (
     <>
       <h1>Transfer tracker</h1>
-      <p className="sub">Every player who changed schools since last season, with what they produced before the move. Stats are last season's per-game averages at the old school. The list fills in as players appear in games.</p>
+      <p className="sub">Every player who changed schools since last season, with what they produced before the move. Stats are what they averaged last season at their old school.</p>
       <div className="cards" style={{ marginBottom: 16 }}>
         <div className="card"><div className="k">Players moved</div><div className="v">{all.length.toLocaleString()}</div><div className="r">with a game on record at both schools</div></div>
         <div className="card"><div className="k">Double-digit scorers</div><div className="v">{doubleDigit}</div><div className="r">averaged 10+ points last season</div></div>

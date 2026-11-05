@@ -3,12 +3,16 @@ import { useParams } from 'react-router-dom';
 import { ratingsFor, type Rating } from './api';
 import { sportMeta } from './sports';
 
+// The sport in the address, or (on pages that aren't about one sport, like Home) the last one the person looked at.
 export function useCtx() {
   const p = useParams();
-  const meta = sportMeta(p.sport);
+  let remembered: string | undefined;
+  try { remembered = localStorage.getItem('lastSport') ?? undefined; } catch { /* unavailable */ }
+  const meta = sportMeta(p.sport ?? remembered);
   const sport = meta.id;
   const season = Number(p.season) || meta.seasons[0].year;
-  return { sport, season, meta, base: `/${sport}/${season}` };
+  if (p.sport) { try { localStorage.setItem('lastSport', sport); } catch { /* unavailable */ } }
+  return { sport, season, meta, base: `/${sport}/${season}`, inSport: !!p.sport };
 }
 
 export function useAsync<T>(fn: () => Promise<T>, deps: any[]): { data: T | undefined; error: string | null; loading: boolean } {

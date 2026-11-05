@@ -67,7 +67,7 @@ export function TodayPage() {
       {watchList.length > 0 && isToday(day) && (
         <section style={{ marginBottom: 18 }}>
           <h2 style={{ fontSize: 22 }}>Worth watching</h2>
-          <p className="muted sm" style={{ margin: '-6px 0 10px' }}>Good teams, close game. Ranked by both.</p>
+          <p className="muted sm" style={{ margin: '-6px 0 10px' }}>The best teams in the closest games.</p>
           <div className="games">{watchList.map(card)}</div>
         </section>
       )}
@@ -76,7 +76,7 @@ export function TodayPage() {
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 10 }}>
           <h2 style={{ fontSize: 22, margin: 0 }}>{isToday(day) ? `All ${meta.long.toLowerCase()} games` : `${rows.length} games`}</h2>
           <span className="muted sm">{isToday(day) ? `${rows.length} games` : ''}</span>
-          {called > 0 && <span className="pill win" style={{ marginLeft: 'auto' }}>Model {right}-{called - right} ({pct(right / called)})</span>}
+          {called > 0 && <span className="pill win" style={{ marginLeft: 'auto' }}>Our picks: {right}-{called - right} ({pct(right / called)})</span>}
         </div>
         {games.loading ? <Loading rows={6} /> : rows.length ? <div className="games">{rows.map(card)}</div> : <div className="panel empty">No games on this day.{latest.data?.[0] && ymd(new Date(latest.data[0].start_time)) !== day && <> <button className="btn ghost" style={{ marginLeft: 8 }} onClick={() => setSp({ d: ymd(new Date(latest.data![0].start_time)) }, { replace: true })}>Go to the last game day</button></>}</div>}
       </section>
@@ -107,7 +107,7 @@ export function GameCard({ g, H, A, est, pr, final, homeWon, base }: { g: Game; 
       {line('away')}{line('home')}
       <div className="gfoot">
         <span>{final ? 'Final' : fmtTime(g.start_time)}{g.neutral_site ? ' · Neutral' : ''}</span>
-        {upset ? <span className="pill loss">Upset</span> : pr && !final ? <span>{(pr.aWin >= .5 ? g.home_abbr : g.away_abbr)} by {Math.abs(pr.margin).toFixed(est ? 0 : 1)}{est ? ' · est.' : ''}</span> : !pr && !final ? <span>Not rated</span> : null}
+        {upset ? <span className="pill loss">Upset</span> : pr && !final ? <span>{est ? 'Heavy favorite' : <>Pick: {(pr.aWin >= .5 ? g.home_abbr : g.away_abbr)} by {Math.max(1, Math.round(Math.abs(pr.margin)))}</>}</span> : null}
       </div>
     </Link>
   );

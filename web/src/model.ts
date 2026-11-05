@@ -58,3 +58,16 @@ export const pct = (p: number) => (p >= 0.995 ? '>99%' : p <= 0.005 ? '<1%' : `$
 export const f1 = (v: number) => (Number.isFinite(v) ? v.toFixed(1) : '–');
 export const f2 = (v: number) => (Number.isFinite(v) ? v.toFixed(2) : '–');
 export const sign = (v: number, dp = 1) => (v > 0 ? `+${v.toFixed(dp)}` : v.toFixed(dp));
+
+// Video-game style 0-99 ratings: where a team sits among every team in its sport, on the scale fans know from
+// college football games (best in the country ~99, average ~77, worst ~55). Overall uses the full rating; offense
+// and defense use their halves.
+export function ovr(all: Rating[], r: Rating) {
+  // Video-game style 0-99: based on how far above average a team actually is, not just its rank, so the gap
+  // between #1 and #10 shows. Average team = 75; each standard deviation = 8 points; capped at 99.
+  const n = all.length;
+  if (n < 2) return { ovr: 75, off: 75, def: 75 };
+  const z = (xs: number[], v: number) => { const m = xs.reduce((a, b) => a + b, 0) / xs.length; const sd = Math.sqrt(xs.reduce((a, b) => a + (b - m) ** 2, 0) / xs.length) || 1; return (v - m) / sd; };
+  const g = (x: number) => Math.max(40, Math.min(99, Math.round(75 + 8 * x)));
+  return { ovr: g(z(all.map((x) => x.adj_em), r.adj_em)), off: g(z(all.map((x) => x.adj_off), r.adj_off)), def: g(-z(all.map((x) => x.adj_def), r.adj_def)) };
+}

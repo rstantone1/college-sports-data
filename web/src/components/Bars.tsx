@@ -23,7 +23,7 @@ export function Bars({ rows, title, hint }: { rows: BarRow[]; title?: string; hi
           <span className="bar-val num">{r.value}</span>
         </div>
       ))}
-      <div className="bar-key muted sm"><span><i style={{ background: 'var(--bar-cold)' }} /> worse than most</span><span><i style={{ background: 'var(--bar-mid)' }} /> average</span><span><i style={{ background: 'var(--bar-hot)' }} /> better than most</span><span>Number = rank out of 100</span></div>
+      <div className="bar-key muted sm"><span><i style={{ background: 'var(--bar-cold)' }} /> worse than most</span><span><i style={{ background: 'var(--bar-mid)' }} /> average</span><span><i style={{ background: 'var(--bar-hot)' }} /> better than most</span><span>Number = better than this % of teams</span></div>
     </div>
   );
 }

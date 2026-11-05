@@ -103,8 +103,8 @@ export function TournamentPage() {
   return (
     <>
       <h1>Tournament odds</h1>
-      <p className="sub">The rest of the season, played out 1,000 times with the model's win chances, then a 68-team field picked each time:
-        one automatic bid per conference plus the strongest at-large résumés. {remainingGames > 0 ? `${remainingGames.toLocaleString()} games still to play.` : 'Season complete: this is how the model would have seeded it.'}
+      <p className="sub">The rest of the season, played out 1,000 times using our win chances, then a 68-team field picked each time:
+        one automatic bid per conference plus the strongest at-large résumés. {remainingGames > 0 ? `${remainingGames.toLocaleString()} games still to play.` : "The season's over: this is how our numbers would have seeded it."}
         {' '}An estimate, not the committee.</p>
       <div className="cards" style={{ marginBottom: 16 }}>
         <div className="card"><div className="k">Locks</div><div className="v">{locks}</div><div className="r">over 95% to make it</div></div>

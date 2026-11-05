@@ -64,7 +64,7 @@ export function GamePage() {
     return (
       <div className="panel">
         <h3>{name}</h3>
-        {!all.length && <p className="muted">No box score for this game.</p>}
+        {!all.length && <p className="muted">Stats for this game aren't available.</p>}
         {bat.length > 0 && <div className="tblwrap"><table className="box">
           <thead><tr><th>Batter</th><th>AB</th><th>R</th><th>H</th><th>RBI</th><th>BB</th><th>K</th></tr></thead>
           <tbody>{bat.map((l, i) => <tr key={i}><td style={{ fontWeight: l.starter ? 700 : 500 }}><Link to={`${base}/player/${l.player_id}`}>{l.players?.display_name}</Link></td><td>{v(l, 'atBats')}</td><td>{v(l, 'runs')}</td><td>{v(l, 'hits')}</td><td>{v(l, 'rbi')}</td><td>{v(l, 'walks')}</td><td>{v(l, 'strikeouts')}</td></tr>)}</tbody>
@@ -89,7 +89,7 @@ export function GamePage() {
     return (
       <div className="panel">
         <h3>{name}</h3>
-        {!all.length && <p className="muted">No box score yet.</p>}
+        {!all.length && <p className="muted">Stats show up once the game starts.</p>}
         {groups.map(([g, label, keys]) => {
           const rows = all.filter((l) => l.stat_group === g);
           if (!rows.length) return null;
@@ -133,7 +133,7 @@ export function GamePage() {
             </tbody>
           </table>
         </div>
-        {!lines.length && <p className="muted">No box score yet.</p>}
+        {!lines.length && <p className="muted">Stats show up once the game starts.</p>}
       </div>
     );
   };

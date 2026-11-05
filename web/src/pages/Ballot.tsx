@@ -38,12 +38,12 @@ export function BallotPage() {
   return (
     <>
       <h1>Your Top 25</h1>
-      <p className="sub">Rank them your way. Drag rows or use the arrows. Your ballot stays on this device, and we score how far you are from the model.</p>
+      <p className="sub">Rank them your way. Drag rows or use the arrows. Your ballot stays on this device, and we show how close you are to our rankings.</p>
       {!ballot.length ? (
         <div className="panel empty">
-          <p>Start from the model's Top 25 and shuffle it, or build one from scratch.</p>
+          <p>Start from our Top 25 and shuffle it, or build your own from scratch.</p>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-            <button className="btn" onClick={start}>Start from the model</button>
+            <button className="btn" onClick={start}>Start from ours</button>
             <button className="btn ghost" onClick={() => setIds([data[0].team_id])}>Start from scratch</button>
           </div>
         </div>
@@ -62,7 +62,7 @@ export function BallotPage() {
                     style={{ borderLeft: `5px solid ${visibleColor(r.color, '#999')}` }}>
                     <span className="bn">{i + 1}</span>
                     <span className="team">{r.logo_url && <img src={r.logo_url} alt="" />}<Link to={`${base}/team/${t}`}><b>{r.short_name}</b></Link>
-                      <span className="muted sm">model #{r.rank}{gap !== 0 && <span className={gap > 0 ? 'W' : 'L'}> ({gap > 0 ? '+' : ''}{gap})</span>}</span></span>
+                      <span className="muted sm">ours #{r.rank}{gap !== 0 && <span className={gap > 0 ? 'W' : 'L'}> ({gap > 0 ? '+' : ''}{gap})</span>}</span></span>
                     <span style={{ display: 'flex', gap: 4 }}>
                       <button className="mini" aria-label="Move up" onClick={() => move(i, i - 1)}>↑</button>
                       <button className="mini" aria-label="Move down" onClick={() => move(i, i + 1)}>↓</button>
@@ -81,22 +81,22 @@ export function BallotPage() {
           </div>
           <div className="grid" style={{ alignContent: 'start' }}>
             <div className="panel" style={{ textAlign: 'center' }}>
-              <div className="muted">Agreement with the model</div>
-              <div className="muted sm">100 means your order matches the ratings exactly</div>
+              <div className="muted">How close you are to our rankings</div>
+              <div className="muted sm">100 means your list matches ours exactly</div>
               <div className="agree" style={{ color: agree > 80 ? 'var(--win)' : agree > 55 ? 'var(--gold)' : 'var(--hot)' }}>{agree}</div>
-              <div className="muted sm">{agree > 90 ? 'Nearly identical to the model.' : agree > 70 ? 'Close, with a few differences.' : agree > 50 ? 'Several teams well away from the model.' : 'Far from the model.'}</div>
+              <div className="muted sm">{agree > 90 ? 'Nearly identical to ours.' : agree > 70 ? 'Close, with a few differences.' : agree > 50 ? 'A few big disagreements.' : 'You see it very differently.'}</div>
             </div>
             {boldest.length > 0 && (
               <div className="panel">
                 <h3>Your boldest calls</h3>
                 {boldest.map((x) => (
-                  <p key={x.r.team_id} style={{ margin: '0 0 6px' }}><b>{x.r.short_name}</b>: you have them #{x.you}, model #{x.r.rank}. {x.gap > 0 ? 'Higher than the numbers.' : 'Lower than the numbers.'}</p>
+                  <p key={x.r.team_id} style={{ margin: '0 0 6px' }}><b>{x.r.short_name}</b>: you have them #{x.you}, ours #{x.r.rank}. {x.gap > 0 ? 'Higher than we have them.' : 'Lower than we have them.'}</p>
                 ))}
               </div>
             )}
             {snubs.length > 0 && (
               <div className="panel">
-                <h3>Model Top 25 teams you left out</h3>
+                <h3>Teams in our Top 25 that you left out</h3>
                 {snubs.map((r) => <p key={r.team_id} style={{ margin: '0 0 4px' }}>#{r.rank} {r.short_name} <button className="chip" onClick={() => add(r.team_id)} disabled={ballot.length >= 25}>Add</button></p>)}
               </div>
             )}

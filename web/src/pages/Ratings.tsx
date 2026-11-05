@@ -38,7 +38,7 @@ export function RatingsPage() {
   if (!data?.length) return (
     <div className="panel empty">
       <h2>No ratings yet for this season</h2>
-      <p>Ratings appear after the first games are processed. The data refreshes every three hours.</p>
+      <p>Rankings start once the first games are played.</p>
     </div>
   );
 
@@ -57,9 +57,9 @@ export function RatingsPage() {
     <>
       <h1>{meta.long} ratings</h1>
       <p className="sub">
-        Every Division I team, ranked by how many {meta.pointWord} better than an average team they'd be on a neutral court, after adjusting for who they played and where.
+        Every team in the country, best to worst. The number is how many {meta.pointWord} a team would beat an average team by, after accounting for who they've played.
         Updated {asOf ? new Date(asOf + 'T12:00:00').toLocaleDateString(undefined, { month: 'long', day: 'numeric' }) : ''}.
-        {avgGp < 6 && <> <b>Early season:</b> {avgGp < 1.5 ? 'most teams have played one game' : `teams have played about ${Math.round(avgGp)} games`}, so ratings still lean on last season.</>}
+        {avgGp < 6 && <> <b>Early season:</b> {avgGp < 1.5 ? 'most teams have played one game' : `teams have played about ${Math.round(avgGp)} games`}, so these still lean on how teams finished last season.</>}
       </p>
 
       <div className="chips" style={{ gap: 8 }}>

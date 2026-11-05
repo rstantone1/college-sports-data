@@ -64,7 +64,7 @@ export function MatchupPage() {
   return (
     <>
       <h1>Matchup machine</h1>
-      <p className="sub">Pick any two teams and a court. The model gives you a score, a spread and the odds, based on how both teams have played against everyone else.</p>
+      <p className="sub">Pick any two teams and a court. We'll give you the likely score, the spread, and each team's chance to win.</p>
       <div className="mu">
         <Pick r={a} k="a" />
         <div className="vs">vs</div>

@@ -123,7 +123,7 @@ export function LeadersPage() {
   return (
     <>
       <h1>Leaders</h1>
-      <p className="sub">{meta.long}, {meta.seasons.find((s) => s.year === season)?.label}. Players need to be regulars on a Division I team to appear; rate stats carry a minimum.</p>
+      <p className="sub">{meta.long}, {meta.seasons.find((s) => s.year === season)?.label}. Players with real minutes. Shooting percentages need enough attempts to count.</p>
       <div className="chips">
         <button className={`chip ${who === 'players' ? 'on' : ''}`} onClick={() => { setWho('players'); setKey(pStats[0].key); }}>Players</button>
         <button className={`chip ${who === 'teams' ? 'on' : ''}`} onClick={() => { setWho('teams'); setKey(tStats[0].key); }}>Teams</button>
@@ -133,7 +133,7 @@ export function LeadersPage() {
       </div>
       <div className="panel">
         <h3>{stat.label} <span className="muted" style={{ fontWeight: 500, fontSize: 15 }}>{stat.desc}</span></h3>
-        {!rows.length && <p className="muted">Nothing to show yet. This fills in as box scores are processed.</p>}
+        {!rows.length && <p className="muted">Nothing here yet. Check back once games have been played.</p>}
         <div className="tblwrap">
           <table className="tbl">
             <thead><tr><th>#</th><th className="l">{who === 'players' ? 'Player' : 'Team'}</th><th className="l hide-sm">{who === 'players' ? 'Team' : 'Conf'}</th><th>{who === 'players' ? 'GP' : 'Record'}</th><th>{stat.label}</th></tr></thead>

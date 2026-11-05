@@ -44,7 +44,7 @@ export function SchoolPage() {
       </div>
       <div className="cards" style={{ marginBottom: 16 }}>
         <div className="card"><div className="k">Sports rated</div><div className="v">{list.length}</div><div className="r">of {Object.keys(SPORTS).length} we cover</div></div>
-        <div className="card"><div className="k">Overall standing</div><div className="v">{overall}</div><div className="r">average rank, out of 100, across those sports</div></div>
+        <div className="card"><div className="k">Overall standing</div><div className="v">{overall}</div><div className="r">how its teams rank on average (100 = best)</div></div>
         <div className="card"><div className="k">Best</div><div className="v" style={{ fontSize: 24 }}>{sportMeta(list.reduce((b, r, i) => (standing[i] > standing[b] ? i : b), 0) === -1 ? 'mbb' : list[standing.indexOf(Math.max(...standing))].sport_id).short}</div><div className="r">#{Math.min(...list.map((r) => r.rank))} nationally</div></div>
       </div>
       <div className="panel">

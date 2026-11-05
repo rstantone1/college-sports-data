@@ -39,8 +39,9 @@ async function main() {
     case 'daily': {
       const s = sport(args.sport); const y = season(s.id);
       await teamsFor(s, y);
-      // Sweep three days ahead so upcoming games are in the database and get a pick before they start.
-      await gamesFor(s, y, { refreshDays: 3, until: new Date(Date.now() + 3 * 864e5) });
+      // Sweep the rest of the season so every team's full upcoming schedule is there (and picks can be written
+      // before each game). Future dates are re-checked every run, since schedules get added and moved.
+      await gamesFor(s, y, { refreshDays: 3, until: new Date(Date.now() + 240 * 864e5) });
       await boxFor(s, y, { plays: args.plays === '1' });
       // Official rosters (height, class, hometown; and players who haven't appeared in a box score yet). ESPN sports only.
       if (!isNcaa(s)) { try { await ingestRosters(s, y); } catch (e) { console.warn('rosters skipped:', (e as Error).message); } }

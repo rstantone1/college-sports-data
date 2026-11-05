@@ -73,7 +73,7 @@ export function ProfileBars({ me, all, ratings }: { me: Profile; all: Profile[];
   ];
   return (
     <div className="grid" style={{ gap: 14 }}>
-      <Bars title="The big picture" rows={core} hint="rank out of 100" />
+      <Bars title="The big picture" rows={core} hint="compared with every team" />
       <Bars title={meta.hoops ? 'Offense: the four things that win' : sport === 'cfb' ? 'Offense' : 'Hitting'} rows={hoops} />
       <Bars title={meta.hoops ? 'Defense' : sport === 'cfb' ? 'Defense' : 'Pitching'} rows={defense} />
     </div>
@@ -88,7 +88,7 @@ export function WhyRanked({ teamId, games, byId }: { teamId: number; games: Game
   const imp = useAsync(() => restAll<Impact>(`team_game_impact?sport_id=eq.${sport}&season_year=eq.${season}&team_id=eq.${teamId}&select=game_id,game_adj_em,contrib`), [sport, season, teamId]);
   if (imp.loading) return <Loading rows={3} />;
   const rows = (imp.data ?? []).map((x) => ({ ...x, contrib: Number(x.contrib), g: games.find((g) => g.id === x.game_id) })).filter((x) => x.g);
-  if (!rows.length) return <p className="muted sm">Shows up after the first rated game.</p>;
+  if (!rows.length) return <p className="muted sm">Shows up after the first game.</p>;
   const k = meta.typicalUnits / meta.scale;
   const up = [...rows].sort((a, b) => b.contrib - a.contrib).slice(0, 3).filter((x) => x.contrib > 0);
   const down = [...rows].sort((a, b) => a.contrib - b.contrib).slice(0, 3).filter((x) => x.contrib < 0);
@@ -99,7 +99,7 @@ export function WhyRanked({ teamId, games, byId }: { teamId: number; games: Game
     const oppName = home ? g.away_name : g.home_name;
     return (
       <li key={x.game_id} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--rule)', alignItems: 'center' }}>
-        <span><Link to={`${base}/game/${g.id}`}><b className={us > them ? 'W' : 'L'}>{us > them ? 'W' : 'L'} {us}-{them}</b></Link> <span className="muted">{g.neutral_site ? 'vs' : home ? 'vs' : 'at'}</span> {oppName}{opp ? <span className="muted sm"> #{opp.rank}</span> : <span className="muted sm"> (not D-I)</span>} <span className="muted sm">· {fmtDate(g.start_time)}</span></span>
+        <span><Link to={`${base}/game/${g.id}`}><b className={us > them ? 'W' : 'L'}>{us > them ? 'W' : 'L'} {us}-{them}</b></Link> <span className="muted">{g.neutral_site ? 'vs' : home ? 'vs' : 'at'}</span> {oppName}{opp ? <span className="muted sm"> #{opp.rank}</span> : <span className="muted sm"> (lower division)</span>} <span className="muted sm">· {fmtDate(g.start_time)}</span></span>
         <b className="num" style={{ color: x.contrib > 0 ? 'var(--win)' : 'var(--hot)' }}>{sign(x.contrib * k, 1)}</b>
       </li>
     );

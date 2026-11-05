@@ -5,7 +5,7 @@ import { useAsync, useCtx, useRatings, teamColor, onColor, fmtDate } from '../ho
 import { Back, Loading, ErrorBox, FollowButton } from '../components/Shell';
 import { ProfileBars, WhyRanked, useProfiles } from '../components/TeamProfile';
 import { LineChart } from '../components/Charts';
-import { f1, sign, pct, predict, league, perGame } from '../model';
+import { f1, sign, pct, predict, league, perGame, ovr } from '../model';
 
 interface CfbLine { player_id: number; display_name: string; stat_group: string; games: number; totals: Record<string, number> }
 interface DiamondLine { player_id: number; display_name: string; g_bat: number; ab: number; r: number; h: number; rbi: number; bb: number; so: number; g_pit: number; ip: number; ha: number; er: number; bba: number; k: number; }
@@ -65,7 +65,9 @@ export function TeamPage() {
               {me.team_espn_id && <Link to={`/school/${me.team_espn_id}`} style={{ fontWeight: 700, textDecoration: 'underline', fontSize: 14 }}>All sports</Link>}
             </div>
           </div>
-          <div className="rankbig">#{me.rank}<small>of {R.data!.length} nationally</small></div>
+          <div className="rankbig">#{me.rank}<small>of {R.data!.length} nationally</small>
+            <div className="fovr" style={{ justifyContent: 'flex-end' }}>{(() => { const o = ovr(R.data!, me); return <><span><b>{o.ovr}</b>OVR</span><span><b>{o.off}</b>OFF</span><span><b>{o.def}</b>DEF</span></>; })()}</div>
+          </div>
         </div>
       </section>
 
@@ -73,7 +75,7 @@ export function TeamPage() {
         <div className="card"><div className="k">Rating</div><div className="v" style={{ color: me.adj_em >= 0 ? 'var(--win)' : 'var(--hot)' }}>{sign(perGame(me, sport).rating, dp)}</div><div className="r">{meta.pointWord} per game vs. an average team</div></div>
         <div className="card"><div className="k">Offense</div><div className="v">{perGame(me, sport).off.toFixed(dp)}</div><div className="r">{meta.pointWord} per game · #{me.off_rank}</div></div>
         <div className="card"><div className="k">Defense</div><div className="v">{perGame(me, sport).def.toFixed(dp)}</div><div className="r">allowed per game · #{me.def_rank}</div></div>
-        {meta.hoops && <div className="card"><div className="k">Pace</div><div className="v">{f1(me.tempo)}</div><div className="r">possessions / game</div></div>}
+        {meta.hoops && <div className="card"><div className="k">Pace</div><div className="v">{f1(me.tempo)}</div><div className="r">trips down the floor per game</div></div>}
         {upcoming.length > 0 && <div className="card"><div className="k">Projected record</div><div className="v">{Math.round(projW)}-{totalG - Math.round(projW)}</div><div className="r">{wins}-{done.length - wins} so far</div></div>}
       </div>
 
@@ -187,7 +189,7 @@ function Roster({ rows, loading }: { rows: PlayerLine[]; loading: boolean }) {
   const { base } = useCtx();
   const [per, setPer] = useState<'game' | 'total'>('game');
   if (loading) return <Loading rows={6} />;
-  if (!rows.length) return <p className="muted">Player stats appear after the first game is processed.</p>;
+  if (!rows.length) return <p className="muted">Player stats show up after the first game.</p>;
   const d = (v: number, gp: number) => (per === 'game' ? (gp ? (Number(v) / gp).toFixed(1) : '–') : String(Math.round(Number(v))));
   const pctS = (m: number, a: number) => (Number(a) ? (100 * Number(m) / Number(a)).toFixed(0) + '%' : '–');
   return (
@@ -219,7 +221,7 @@ function DiamondRoster({ rows, loading }: { rows: DiamondLine[]; loading: boolea
   const { base } = useCtx();
   const [view, setView] = useState<'bat' | 'pit'>('bat');
   if (loading) return <Loading rows={6} />;
-  if (!rows.length) return <p className="muted">Player stats appear after box scores are processed.</p>;
+  if (!rows.length) return <p className="muted">Player stats show up after the first game.</p>;
   const N = (v: any) => Number(v) || 0;
   const avg = (h: number, ab: number) => (N(ab) ? (N(h) / N(ab)).toFixed(3).replace(/^0/, '') : '–');
   const obp = (r: DiamondLine) => { const d = N(r.ab) + N(r.bb); return d ? ((N(r.h) + N(r.bb)) / d).toFixed(3).replace(/^0/, '') : '–'; };
@@ -262,7 +264,7 @@ function CfbRoster({ rows, loading }: { rows: CfbLine[]; loading: boolean }) {
   const { base } = useCtx();
   const [grp, setGrp] = useState('passing');
   if (loading) return <Loading rows={6} />;
-  if (!rows.length) return <p className="muted">Player stats appear after box scores are processed.</p>;
+  if (!rows.length) return <p className="muted">Player stats show up after the first game.</p>;
   const def = CFB_GROUPS.find((g) => g[0] === grp) ?? CFB_GROUPS[0];
   const list = rows.filter((r) => r.stat_group === def[0]).sort((a, b) => (Number(b.totals[def[2][2]?.[0]] ?? b.totals[def[2][0][0]]) || 0) - (Number(a.totals[def[2][2]?.[0]] ?? a.totals[def[2][0][0]]) || 0));
   return (

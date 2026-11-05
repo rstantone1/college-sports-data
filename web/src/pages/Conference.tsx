@@ -50,7 +50,7 @@ export function ConferencePage() {
       <Back />
       <h1>{name}</h1>
       <p className="sub">{members.length} teams · average rating {sign(avg)} {meta.pointWord} per game · #{confRank} of {confRanks.length} conferences.
-        {anyConfGames ? ' Projected finish counts games played plus the model\'s odds in every conference game left.' : ' Conference play hasn\'t been scheduled into the data yet, so this is ordered by rating.'}</p>
+        {anyConfGames ? ' Projected finish adds the games already played to our odds for every conference game left.' : ' Conference games haven\'t started yet, so this is ordered by rating.'}</p>
       <div className="panel">
         <div className="tblwrap">
           <table className="tbl">
