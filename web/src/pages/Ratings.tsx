@@ -47,7 +47,7 @@ export function RatingsPage() {
   const th = (k: Key, label: string, cls = '') => (
     <th className={`${cls} ${sort.k === k ? 'sorted' : ''}`}
       onClick={() => setSort((s) => ({ k, dir: s.k === k ? (s.dir === 1 ? -1 : 1) : (k === 'rank' || k === 'adj_def' ? 1 : -1) }))}>
-      {label}{sort.k === k ? (sort.dir === 1 ? ' ↑' : ' ↓') : ''}
+      {label}{sort.k === k && !(k === 'rank' && sort.dir === 1) ? (sort.dir === 1 ? ' ↑' : ' ↓') : ''}
     </th>
   );
   const dp = adv && !meta.hoops ? 2 : 1;
