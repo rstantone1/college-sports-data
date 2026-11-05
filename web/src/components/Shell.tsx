@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { useCtx, useRatings } from '../hooks';
+import { useCtx, useRatings, visibleColor } from '../hooks';
 import { SPORTS, sportMeta } from '../sports';
 
 export function Shell({ children }: { children: ReactNode }) {
@@ -107,7 +107,7 @@ export function ErrorBox({ msg }: { msg: string }) {
 export function TeamCell({ name, logo, color, sub }: { name: string; logo?: string | null; color?: string | null; sub?: string }) {
   return (
     <span className="team">
-      <span className="swatch" style={{ background: color ? `#${color}` : 'var(--rule)' }} />
+      <span className="swatch" style={{ background: color ? visibleColor(color) : 'var(--rule)' }} />
       {logo ? <img src={logo} alt="" loading="lazy" /> : null}
       <b>{name}</b>{sub ? <span className="muted sm">{sub}</span> : null}
     </span>

@@ -54,7 +54,7 @@ export function ScoresPage() {
         {line('away')}{line('home')}
         <div className="gfoot">
           <span>{final ? 'Final' : fmtTime(g.start_time)}{g.neutral_site ? ' · Neutral' : ''}</span>
-          {upset ? <span className="pill loss">Upset</span> : pr && !final ? <span>{(pr.aWin >= .5 ? g.home_abbr : g.away_abbr)} by {Math.abs(pr.margin).toFixed(1)}</span> : null}
+          {upset ? <span className="pill loss">Upset</span> : pr && !final ? <span>{(pr.aWin >= .5 ? g.home_abbr : g.away_abbr)} by {Math.abs(pr.margin).toFixed(1)}</span> : !pr ? <span>No pick: {!H && !A ? 'neither team is' : 'one team isn\'t'} rated</span> : null}
         </div>
       </Link>
     );
@@ -63,7 +63,7 @@ export function ScoresPage() {
   return (
     <>
       <h1>Scores and picks</h1>
-      <p className="sub">Every Division I game for the day. Before tip, the model's win chance. After, the final, with upsets flagged.</p>
+      <p className="sub">Every Division I game of the day. Before tip, the model's pick. After, the final.</p>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
         <button className="btn ghost" onClick={() => shift(-1)} aria-label="Previous day">‹</button>
         <input type="date" value={day} onChange={(e) => e.target.value && setSp({ d: e.target.value }, { replace: true })}

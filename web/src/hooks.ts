@@ -31,6 +31,19 @@ export function useRatings() {
 
 export const teamColor = (c?: string | null, fallback = '#2453D6') => (c ? `#${c.replace('#', '')}` : fallback);
 
+const isDark = () => typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: dark)').matches;
+const hexRgb = (h: string) => { const x = h.replace('#', ''); return [0, 2, 4].map((i) => parseInt(x.slice(i, i + 2), 16)); };
+const lum = (h: string) => { const [r, g, b] = hexRgb(h); return (r * 299 + g * 587 + b * 114) / 255000; };
+const mix = (h: string, to: number, t: number) => '#' + hexRgb(h).map((v) => Math.round(v + (to - v) * t).toString(16).padStart(2, '0')).join('');
+// A team color that can be seen as text or a thin line on the page background: navy and black get lifted in
+// dark mode, white and gold get grounded in light mode. Backgrounds (the team hero) keep the true color.
+export function visibleColor(c?: string | null, fallback = '#2453D6') {
+  const h = teamColor(c, fallback);
+  const l = lum(h);
+  if (isDark()) return l < 0.28 ? mix(h, 255, Math.min(0.6, (0.3 - l) * 2.2 + 0.25)) : h;
+  return l > 0.72 ? mix(h, 0, Math.min(0.55, (l - 0.7) * 2 + 0.2)) : h;
+}
+
 // Two team colors that can be told apart: if they're too close, the second team uses its alternate (or a fallback).
 export function distinctPair(a?: string | null, b?: string | null, bAlt?: string | null): [string, string] {
   const ca = teamColor(a, '#2453D6');
@@ -39,9 +52,9 @@ export function distinctPair(a?: string | null, b?: string | null, bAlt?: string
   for (const c of [b, bAlt, 'E4312B', '147A4B']) {
     if (!c) continue;
     const cc = teamColor(c);
-    if (far(ca, cc) && !/^#?(f{6}|ffffff)$/i.test(cc)) return [ca, cc];
+    if (far(ca, cc) && !/^#?(f{6}|ffffff)$/i.test(cc)) return [visibleColor(ca), visibleColor(cc)];
   }
-  return [ca, '#E4312B'];
+  return [visibleColor(ca), '#E4312B'];
 }
 
 // Readable text on a team color.

@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useCtx, useRatings, useLocal } from '../hooks';
+import { useCtx, useRatings, useLocal, visibleColor } from '../hooks';
 import { Loading, ErrorBox } from '../components/Shell';
 
 // Build your own Top 25 and see how far it is from the model.
@@ -59,7 +59,7 @@ export function BallotPage() {
                     onDragEnd={() => setDragging(null)}
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={() => { if (dragFrom.current != null) move(dragFrom.current, i); dragFrom.current = null; setDragging(null); }}
-                    style={{ borderLeft: `5px solid #${r.color ?? '999'}` }}>
+                    style={{ borderLeft: `5px solid ${visibleColor(r.color, '#999')}` }}>
                     <span className="bn">{i + 1}</span>
                     <span className="team">{r.logo_url && <img src={r.logo_url} alt="" />}<Link to={`${base}/team/${t}`}><b>{r.short_name}</b></Link>
                       <span className="muted sm">model #{r.rank}{gap !== 0 && <span className={gap > 0 ? 'W' : 'L'}> ({gap > 0 ? '+' : ''}{gap})</span>}</span></span>
@@ -84,7 +84,7 @@ export function BallotPage() {
               <div className="muted">Agreement with the model</div>
               <div className="muted sm">100 means your order matches the ratings exactly</div>
               <div className="agree" style={{ color: agree > 80 ? 'var(--win)' : agree > 55 ? 'var(--gold)' : 'var(--hot)' }}>{agree}</div>
-              <div className="muted sm">{agree > 90 ? 'You and the math are in sync.' : agree > 70 ? 'Mostly aligned, a few strong opinions.' : agree > 50 ? 'You see things the numbers don\'t.' : 'Bold. Very bold.'}</div>
+              <div className="muted sm">{agree > 90 ? 'Nearly identical to the model.' : agree > 70 ? 'Close, with a few differences.' : agree > 50 ? 'Several teams well away from the model.' : 'Far from the model.'}</div>
             </div>
             {boldest.length > 0 && (
               <div className="panel">

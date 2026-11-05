@@ -50,7 +50,7 @@ export function TeamPage() {
   return (
     <>
       <Back />
-      <section className="hero" style={{ background: `linear-gradient(120deg, ${color} 0%, ${color} 55%, ${teamColor(me.alt_color, '#000')} 140%)`, color: ink }}>
+      <section className="hero" style={{ background: color, color: ink }}>
         <div className="in">
           {me.logo_url && <img src={me.logo_url} alt="" />}
           <div>

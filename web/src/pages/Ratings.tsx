@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { previousRanks } from '../api';
-import { useAsync, useCtx, useRatings, teamColor } from '../hooks';
+import { useAsync, useCtx, useRatings, visibleColor } from '../hooks';
 import { Loading, ErrorBox, TeamCell } from '../components/Shell';
 import { f1, sign, perGame } from '../model';
 
@@ -58,18 +58,18 @@ export function RatingsPage() {
       <p className="sub">
         Every Division I team, ranked by how many {meta.pointWord} better than an average team they'd be on a neutral court, after adjusting for who they played and where.
         Updated {asOf ? new Date(asOf + 'T12:00:00').toLocaleDateString(undefined, { month: 'long', day: 'numeric' }) : ''}.
-        {avgGp < 6 && <> <b>Early season:</b> teams have about {avgGp.toFixed(1)} games, so ratings lean on last season until more games are played.</>}
+        {avgGp < 6 && <> <b>Early season:</b> {avgGp < 1.5 ? 'most teams have played one game' : `teams have played about ${Math.round(avgGp)} games`}, so ratings still lean on last season.</>}
       </p>
 
       <div className="chips" style={{ gap: 8 }}>
         <button className={`chip ${!adv ? 'on' : ''}`} onClick={() => setAdv(false)}>Simple</button>
         <button className={`chip ${adv ? 'on' : ''}`} onClick={() => setAdv(true)}>Advanced</button>
-        <button className="chip" onClick={() => setShowKey((v) => !v)}>{showKey ? 'Hide key' : 'What do these numbers mean?'}</button>
+        <button className="back" style={{ margin: '0 0 0 6px', textDecoration: 'underline', color: 'var(--cool)' }} onClick={() => setShowKey((v) => !v)}>{showKey ? 'Hide key' : 'What do these numbers mean?'}</button>
       </div>
       {showKey && (
         <div className="panel" style={{ marginBottom: 12, maxWidth: 720 }}>
           <p><b>Rating</b> is the whole story in one number: how many {meta.pointWord} this team would beat an average Division I team by, on a neutral court, in a typical game. +10 means a 10-{meta.pointWord.replace(/s$/, '')} favorite against an average team. Teams above zero are better than average.</p>
-          <p><b>Offense</b> is {meta.pointWord} they'd score per game against an average defense. <b>Defense</b> is {meta.pointWord} they'd allow per game against an average offense, so lower is better. The small number next to each is the national rank.</p>
+          <p><b>Offense</b> is {meta.pointWord} they'd score in a typical game against an average defense. <b>Defense</b> is {meta.pointWord} they'd allow against an average offense, so lower is better. Both assume an average pace, so a fast team and a slow team are compared fairly. The small number next to each is the national rank.</p>
           {meta.hoops && <p><b>Pace</b> is possessions per game. Fast teams score and allow more {meta.pointWord} without being better or worse.</p>}
           <p>"Adjusted" means every game is weighed by who it was against and where it was played. Beating a top-10 team on the road counts for far more than beating a bad team at home.</p>
           <p className="muted sm" style={{ margin: 0 }}>Advanced view shows the same numbers per {meta.hoops ? '100 possessions' : sport === 'cfb' ? '10 drives' : `${meta.scale} innings`}, which is how analysts compare teams that play at different speeds.</p>
@@ -117,7 +117,7 @@ export function RatingsPage() {
                     <td className="hide-sm num">{r.games_played}</td>
                     <td className="num" style={{ fontSize: 18, color: r.adj_em >= 0 ? 'var(--win)' : 'var(--hot)' }}>{sign(show.em, dp)}</td>
                     <td className="hide-sm" style={{ width: 110 }}>
-                      <div className="bar"><span style={{ left: 0, width: `${Math.max(4, pos * 100)}%`, background: teamColor(r.color) }} /></div>
+                      <div className="bar"><span style={{ left: 0, width: `${Math.max(4, pos * 100)}%`, background: visibleColor(r.color) }} /></div>
                     </td>
                     <td className="num">{show.o.toFixed(dp)} <span className="muted sm">{r.off_rank}</span></td>
                     <td className="num">{show.d.toFixed(dp)} <span className="muted sm">{r.def_rank}</span></td>

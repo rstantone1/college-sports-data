@@ -89,7 +89,12 @@ export async function computeRatings(s: SportConfig, seasonYear: number, opts: {
   let hca = priorHCA;
 
   const additive = s.scoringUnit === 'inning' || s.scoringUnit === 'minute';
-  const teams = [...new Set(tg.map((g) => g.team))];
+  // Rate every member of the division this season, not only the teams that have played: before a team's first
+  // game its rating is its preseason prior, so the schedule and scoreboard can show odds for it.
+  const members = anyMembership
+    ? (await q<{ team_id: number }>(`select ts.team_id from team_seasons ts join teams t on t.id=ts.team_id where t.sport_id=$1 and ts.season_year=$2`, [s.id, seasonYear])).map((r) => r.team_id)
+    : [];
+  const teams = [...new Set([...tg.map((g) => g.team), ...members])];
 
   // Preseason prior: last season's final rating, regressed halfway to league average (scaled to this season's
   // league level). Teams with no history start at average. Worth priorK games, so it fades as games accumulate.
@@ -111,7 +116,8 @@ export async function computeRatings(s: SportConfig, seasonYear: number, opts: {
   const adjO = new Map<number, number>(), adjD = new Map<number, number>(), adjT = new Map<number, number>();
   for (const t of teams) { adjO.set(t, L); adjD.set(t, L); adjT.set(t, LT); }
   const byTeam = new Map<number, TeamGame[]>();
-  for (const g of tg) { if (!byTeam.has(g.team)) byTeam.set(g.team, []); byTeam.get(g.team)!.push(g); }
+  for (const t of teams) byTeam.set(t, []);
+  for (const g of tg) byTeam.get(g.team)!.push(g);
 
   for (let iter = 0; iter < 60; iter++) {
     let maxDelta = 0;
@@ -162,8 +168,9 @@ export async function computeRatings(s: SportConfig, seasonYear: number, opts: {
 
   const ratings: RatingRow[] = teams.map((t) => {
     const gs = byTeam.get(t)!;
-    const rawO = (gs.reduce((a, g) => a + g.pts, 0) / gs.reduce((a, g) => a + g.units, 0)) * scale;
-    const rawD = (gs.reduce((a, g) => a + g.oppPts, 0) / gs.reduce((a, g) => a + g.units, 0)) * scale;
+    const units = gs.reduce((a, g) => a + g.units, 0);
+    const rawO = units ? (gs.reduce((a, g) => a + g.pts, 0) / units) * scale : adjO.get(t)!;
+    const rawD = units ? (gs.reduce((a, g) => a + g.oppPts, 0) / units) * scale : adjD.get(t)!;
     return { team_id: t, games: gs.length, adj_off: adjO.get(t)!, adj_def: adjD.get(t)!, adj_em: adjO.get(t)! - adjD.get(t)!, tempo: adjT.get(t)!, raw_off: rawO, raw_def: rawD };
   });
   return { ratings, leagueAvg: L, hca, games: tg.length / 2, skipped };

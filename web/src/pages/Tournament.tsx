@@ -10,6 +10,10 @@ import { predict, league, pct, sign, perGame } from '../model';
 // conference tournament with probability proportional to rating), then the best remaining teams by a blend of rating
 // and record. Across many runs, how often does each team get in, and on what seed line?
 
+// A game still counts as "to play" only if it is scheduled and not already in the past: a postponed or cancelled
+// game from a finished season shouldn't keep the season looking unfinished.
+const isPending = (g: Game) => !g.completed && !/cancel|postpone|forfeit/i.test(g.status ?? '') && new Date(g.start_time).getTime() > Date.now() - 36 * 3600 * 1000;
+
 interface Sim { team_id: number; inPct: number; autoPct: number; seedAvg: number | null; projW: number; projL: number; w: number; l: number; }
 
 function simulate(rs: Rating[], games: Game[], sport: string, runs: number, field: number, atLargeRank: number): Sim[] {
@@ -25,7 +29,7 @@ function simulate(rs: Rating[], games: Game[], sport: string, runs: number, fiel
       const hw = g.home_score > g.away_score!;
       rec.get(H.team_id)!.w += hw ? 1 : 0; rec.get(H.team_id)!.l += hw ? 0 : 1;
       rec.get(A.team_id)!.w += hw ? 0 : 1; rec.get(A.team_id)!.l += hw ? 1 : 0;
-    } else {
+    } else if (isPending(g)) {
       remaining.push({ h: H.team_id, a: A.team_id, p: predict(H, A, L, g.neutral_site ? 0 : 1, sport).aWin });
     }
   }
@@ -71,7 +75,7 @@ function simulate(rs: Rating[], games: Game[], sport: string, runs: number, fiel
 export function TournamentPage() {
   const { sport, season, base, meta } = useCtx();
   const R = useRatings();
-  const games = useAsync(() => restAll<Game>(`v_games?sport_id=eq.${sport}&season_year=eq.${season}&select=id,home_team_id,away_team_id,home_score,away_score,completed,neutral_site&order=id.asc`), [sport, season]);
+  const games = useAsync(() => restAll<Game>(`v_games?sport_id=eq.${sport}&season_year=eq.${season}&select=id,home_team_id,away_team_id,home_score,away_score,completed,neutral_site,start_time,status&order=id.asc`), [sport, season]);
   const [sims, setSims] = useState<Sim[] | null>(null);
   const [view, setView] = useState<'field' | 'bubble' | 'all'>('field');
   const nav = useNavigate();
@@ -90,7 +94,7 @@ export function TournamentPage() {
   if (R.error) return <ErrorBox msg={R.error} />;
   if (!sims) return <div className="panel empty">Simulating the rest of the season 1,000 times…</div>;
 
-  const remainingGames = (games.data ?? []).filter((g) => !g.completed).length;
+  const remainingGames = (games.data ?? []).filter(isPending).length;
   const rows = view === 'field' ? sims.filter((s) => s.inPct >= 0.5).slice(0, 68)
     : view === 'bubble' ? sims.filter((s) => s.inPct > 0.1 && s.inPct < 0.9)
     : sims;
@@ -115,7 +119,7 @@ export function TournamentPage() {
       <div className="panel">
         <div className="tblwrap">
           <table className="tbl">
-            <thead><tr><th>Seed</th><th className="l">Team</th><th className="l hide-sm">Conf</th><th>Record</th><th>Projected</th><th>Make it</th><th className="hide-sm">Auto bid</th><th className="hide-sm">Rating</th></tr></thead>
+            <thead><tr><th>Seed</th><th className="l">Team</th><th>Make it</th><th className="l hide-sm">Conf</th><th className="hide-sm">Record</th><th className={remainingGames ? '' : 'hide-sm'}>Projected</th><th className="hide-sm">Auto bid</th><th className="hide-sm">Rating</th></tr></thead>
             <tbody>
               {rows.map((s) => {
                 const r = byId.get(s.team_id)!;
@@ -124,10 +128,10 @@ export function TournamentPage() {
                   <tr key={s.team_id} className="row" onClick={() => nav(`${base}/team/${s.team_id}`)}>
                     <td className="rk">{seed && s.inPct >= 0.5 ? seed : '–'}</td>
                     <td className="l"><TeamCell name={r.short_name} logo={r.logo_url} color={r.color} /></td>
-                    <td className="l hide-sm muted">{r.conference_short}</td>
-                    <td className="num">{s.w}-{s.l}</td>
-                    <td className="num">{s.projW.toFixed(1)}-{s.projL.toFixed(1)}</td>
                     <td className="num" style={{ fontSize: 18, color: s.inPct > 0.8 ? 'var(--win)' : s.inPct < 0.3 ? 'var(--hot)' : 'var(--gold)' }}>{pct(s.inPct)}</td>
+                    <td className="l hide-sm muted">{r.conference_short}</td>
+                    <td className="num hide-sm">{s.w}-{s.l}</td>
+                    <td className={`num ${remainingGames ? '' : 'hide-sm'}`}>{remainingGames ? `${s.projW.toFixed(1)}-${s.projL.toFixed(1)}` : `${s.w}-${s.l}`}</td>
                     <td className="hide-sm num">{pct(s.autoPct)}</td>
                     <td className="hide-sm num">#{r.rank} <span className="muted sm">{sign(perGame(r, sport).rating)}</span></td>
                   </tr>

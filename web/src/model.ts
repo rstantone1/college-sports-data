@@ -30,11 +30,12 @@ export function normCdf(z: number) {
   return z > 0 ? 1 - p : p;
 }
 
-// Per-game versions of the ratings, for people. A team's own pace converts "per 100 possessions"
-// (or per 10 drives / per 9 innings) into points in a typical game for that team.
+// Per-game versions of the ratings, for people: "per 100 possessions" (or per 10 drives / per 9 innings)
+// scaled to a typical game at an average pace. A fixed pace keeps the per-game number in the same order as the
+// rank; using each team's own pace would let a slow #6 show a smaller margin than a fast #7.
 export const perGame = (r: Rating, sport: string) => {
   const m = sportMeta(sport);
-  const k = r.tempo / m.scale;
+  const k = m.typicalUnits / m.scale;
   return { rating: r.adj_em * k, off: r.adj_off * k, def: r.adj_def * k };
 };
 export const ratingPG = (r: Rating, sport: string) => perGame(r, sport).rating;

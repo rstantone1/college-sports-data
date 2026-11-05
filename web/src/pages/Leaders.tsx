@@ -143,7 +143,7 @@ export function LeadersPage() {
                 return (
                   <tr key={who === 'players' ? `${r.player_id}-${r.stat_group ?? ''}` : r.team_id} className="row" onClick={() => nav(`${base}/team/${r.team_id}`)}>
                     <td className="rk">{i + 1}</td>
-                    <td className="l">{who === 'players' ? <Link to={`${base}/player/${r.player_id}`} onClick={(e) => e.stopPropagation()}><b>{r.display_name}</b></Link> : <TeamCell name={team?.short_name ?? '–'} logo={team?.logo_url} color={team?.color} />}</td>
+                    <td className="l">{who === 'players' ? <span className="team" style={{ gap: 8 }}>{team?.logo_url && <img src={team.logo_url} alt="" loading="lazy" />}<Link to={`${base}/player/${r.player_id}`} onClick={(e) => e.stopPropagation()}><b>{r.display_name}</b></Link></span> : <TeamCell name={team?.short_name ?? '–'} logo={team?.logo_url} color={team?.color} />}</td>
                     <td className="l hide-sm muted">{who === 'players' ? (team ? <Link to={`${base}/team/${r.team_id}`}>{team.short_name}</Link> : '–') : team?.conference_short}</td>
                     <td className="num">{who === 'players' ? N(r.gp ?? r.games ?? (stat.key.match(/era|k9|ip|^k$/) ? r.g_pit : r.g_bat)) : `${N(r.wins)}-${N(r.gp) - N(r.wins)}`}</td>
                     <td className="num" style={{ fontSize: 18, fontWeight: 700 }}>{(stat.fmt ?? f1)(v)}</td>
