@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { rest, restAll, type Game } from '../api';
 import { useAsync, useCtx, useRatings, fmtTime } from '../hooks';
 import { Loading, ErrorBox } from '../components/Shell';
-import { predict, league, pct } from '../model';
+import { predict, league, pct, outsider } from '../model';
 
 const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
@@ -28,10 +28,13 @@ export function ScoresPage() {
   let called = 0, right = 0;
   const cards = (games.data ?? []).map((g) => {
     const H = byId.get(g.home_team_id), A = byId.get(g.away_team_id);
-    const pr = H && A ? predict(H, A, L, g.neutral_site ? 0 : 1, sport) : null;
+    // One unrated side (a non-Division I opponent) gets a stand-in rating so there's still a pick; two unrated sides get nothing.
+    const est = (H && !A) || (A && !H);
+    const pr = H && A ? predict(H, A, L, g.neutral_site ? 0 : 1, sport)
+      : est ? predict(H ?? outsider(L, sport), A ?? outsider(L, sport), L, g.neutral_site ? 0 : 1, sport) : null;
     const final = g.completed && g.home_score != null;
     const homeWon = final && g.home_score! > g.away_score!;
-    if (final && pr) { called++; if ((pr.aWin >= .5) === homeWon) right++; }
+    if (final && pr && !est) { called++; if ((pr.aWin >= .5) === homeWon) right++; }
     const line = (side: 'away' | 'home') => {
       const isHome = side === 'home';
       const name = isHome ? g.home_name : g.away_name, logo = isHome ? g.home_logo : g.away_logo;
@@ -54,7 +57,7 @@ export function ScoresPage() {
         {line('away')}{line('home')}
         <div className="gfoot">
           <span>{final ? 'Final' : fmtTime(g.start_time)}{g.neutral_site ? ' · Neutral' : ''}</span>
-          {upset ? <span className="pill loss">Upset</span> : pr && !final ? <span>{(pr.aWin >= .5 ? g.home_abbr : g.away_abbr)} by {Math.abs(pr.margin).toFixed(1)}</span> : !pr ? <span>No pick: {!H && !A ? 'neither team is' : 'one team isn\'t'} rated</span> : null}
+          {upset && !est ? <span className="pill loss">Upset</span> : pr && !final ? <span>{(pr.aWin >= .5 ? g.home_abbr : g.away_abbr)} by {Math.abs(pr.margin).toFixed(est ? 0 : 1)}{est ? ' · est.' : ''}</span> : !pr && !final ? <span>Not rated</span> : null}
         </div>
       </Link>
     );

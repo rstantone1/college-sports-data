@@ -54,13 +54,13 @@ export function ConferencePage() {
       <div className="panel">
         <div className="tblwrap">
           <table className="tbl">
-            <thead><tr><th>#</th><th className="l">Team</th><th>Natl</th><th>Rating</th>{anyConfGames && <><th>Conf</th><th>Projected</th></>}<th className="hide-sm">Off / game</th><th className="hide-sm">Def / game</th></tr></thead>
+            <thead><tr><th>#</th><th className="l">Team</th><th className="hide-sm">Natl</th><th>Rating</th>{anyConfGames && <><th>Conf</th><th>Projected</th></>}<th className="hide-sm">Off / game</th><th className="hide-sm">Def / game</th></tr></thead>
             <tbody>
               {table.map((x, i) => (
                 <tr key={x.t.team_id} className="row" onClick={() => nav(`${base}/team/${x.t.team_id}`)}>
                   <td className="rk">{i + 1}</td>
                   <td className="l"><TeamCell name={x.t.short_name} logo={x.t.logo_url} color={x.t.color} /></td>
-                  <td className="num">{x.t.rank}</td>
+                  <td className="num hide-sm">{x.t.rank}</td>
                   <td className="num" style={{ color: x.t.adj_em >= 0 ? 'var(--win)' : 'var(--hot)' }}>{sign(perGame(x.t, sport).rating, 1)}</td>
                   {anyConfGames && <><td className="num">{x.w}-{x.l}</td><td className="num" style={{ fontSize: 18 }}>{x.projW.toFixed(1)}-{x.projL.toFixed(1)}</td></>}
                   <td className="hide-sm num">{perGame(x.t, sport).off.toFixed(1)}</td><td className="hide-sm num">{perGame(x.t, sport).def.toFixed(1)}</td>

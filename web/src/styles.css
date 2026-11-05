@@ -68,6 +68,7 @@ h3{font-family:var(--display);font-weight:700;font-size:20px;margin:0 0 8px}
 .tbl td{padding:7px 8px;border-bottom:1px solid var(--rule);text-align:right;white-space:nowrap}
 .tbl tr.row{cursor:pointer}
 .tbl tr.row:hover td{background:var(--soft)}
+.tbl td.big{font-size:18px}
 .tbl .rk{font-family:var(--display);font-weight:800;font-size:20px;width:40px;text-align:center}
 .team{display:flex;align-items:center;gap:10px;min-width:0}
 .team img{width:24px;height:24px;object-fit:contain;flex:0 0 auto}
@@ -79,7 +80,7 @@ h3{font-family:var(--display);font-weight:700;font-size:20px;margin:0 0 8px}
 .bar span{position:absolute;top:0;bottom:0;border-radius:4px}
 .tblwrap{overflow-x:auto;margin:0 -16px;padding:0 16px}
 .sm{font-size:12px}
-@media(max-width:640px){ .hide-sm{display:none} }
+@media(max-width:640px){ .hide-sm{display:none} .tbl{font-size:14px} .tbl td{padding:7px 4px} .tbl th{padding:8px 4px} .tbl .rk{width:30px;font-size:17px;padding-left:0;padding-right:0} .tbl td.num{font-size:15px} .team{gap:6px} .team b{max-width:25vw} .team img{width:22px;height:22px} .swatch{height:22px} }
 
 /* stat cards */
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}

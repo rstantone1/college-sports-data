@@ -50,7 +50,8 @@ export function RatingsPage() {
       {label}{sort.k === k ? (sort.dir === 1 ? ' ↑' : ' ↓') : ''}
     </th>
   );
-  const dp = meta.hoops ? 1 : 2;
+  const dp = adv && !meta.hoops ? 2 : 1;
+  const ex = data[0], exPg = perGame(ex, sport);
 
   return (
     <>
@@ -69,7 +70,7 @@ export function RatingsPage() {
       {showKey && (
         <div className="panel" style={{ marginBottom: 12, maxWidth: 720 }}>
           <p><b>Rating</b> is the whole story in one number: how many {meta.pointWord} this team would beat an average Division I team by, on a neutral court, in a typical game. +10 means a 10-{meta.pointWord.replace(/s$/, '')} favorite against an average team. Teams above zero are better than average.</p>
-          <p><b>Offense</b> is {meta.pointWord} they'd score in a typical game against an average defense. <b>Defense</b> is {meta.pointWord} they'd allow against an average offense, so lower is better. Both assume an average pace, so a fast team and a slow team are compared fairly. The small number next to each is the national rank.</p>
+          <p><b>Scores</b> is {meta.pointWord} they'd put up in a typical game against an average defense. <b>Allows</b> is {meta.pointWord} an average offense would score on them, so lower is better. Rating is simply Scores minus Allows. Both assume an average pace, so a fast team and a slow team are compared fairly. The small gray number is the national rank for that column.</p>
           {meta.hoops && <p><b>Pace</b> is possessions per game. Fast teams score and allow more {meta.pointWord} without being better or worse.</p>}
           <p>"Adjusted" means every game is weighed by who it was against and where it was played. Beating a top-10 team on the road counts for far more than beating a bad team at home.</p>
           <p className="muted sm" style={{ margin: 0 }}>Advanced view shows the same numbers per {meta.hoops ? '100 possessions' : sport === 'cfb' ? '10 drives' : `${meta.scale} innings`}, which is how analysts compare teams that play at different speeds.</p>
@@ -97,8 +98,8 @@ export function RatingsPage() {
                 {th('games_played', 'GP', 'hide-sm')}
                 {th('adj_em', 'Rating')}
                 <th className="hide-sm" style={{ cursor: 'default' }}></th>
-                {th('adj_off', 'Offense')}
-                {th('adj_def', 'Defense')}
+                {th('adj_off', adv ? 'Offense' : 'Scores')}
+                {th('adj_def', adv ? 'Defense' : 'Allows')}
                 {meta.hoops && th('tempo', 'Pace', 'hide-sm')}
               </tr>
             </thead>
@@ -115,12 +116,12 @@ export function RatingsPage() {
                     <td className="l"><TeamCell name={r.short_name} logo={r.logo_url} color={r.color} /></td>
                     <td className="l hide-sm muted">{r.conference_short}</td>
                     <td className="hide-sm num">{r.games_played}</td>
-                    <td className="num" style={{ fontSize: 18, color: r.adj_em >= 0 ? 'var(--win)' : 'var(--hot)' }}>{sign(show.em, dp)}</td>
+                    <td className="num big" style={{ color: r.adj_em >= 0 ? 'var(--win)' : 'var(--hot)' }}>{sign(show.em, dp)}</td>
                     <td className="hide-sm" style={{ width: 110 }}>
                       <div className="bar"><span style={{ left: 0, width: `${Math.max(4, pos * 100)}%`, background: visibleColor(r.color) }} /></div>
                     </td>
-                    <td className="num">{show.o.toFixed(dp)} <span className="muted sm">{r.off_rank}</span></td>
-                    <td className="num">{show.d.toFixed(dp)} <span className="muted sm">{r.def_rank}</span></td>
+                    <td className="num">{show.o.toFixed(dp)} <span className="muted sm hide-sm">{r.off_rank}</span></td>
+                    <td className="num">{show.d.toFixed(dp)} <span className="muted sm hide-sm">{r.def_rank}</span></td>
                     {meta.hoops && <td className="hide-sm num">{f1(r.tempo)}</td>}
                   </tr>
                 );
@@ -128,13 +129,18 @@ export function RatingsPage() {
             </tbody>
           </table>
         </div>
-        <div className="legend">
-          <span>Rating: {meta.pointWord} per game better than an average team{adv ? ` (per ${meta.hoops ? '100 possessions' : sport === 'cfb' ? '10 drives' : meta.scale + ' innings'})` : ''}</span>
-          <span>Offense: {meta.pointWord} {adv ? meta.effLabel : 'per game'} vs. an average defense</span>
-          <span>Defense: {meta.pointWord} allowed, lower is better</span>
-          {meta.hoops && <span>Pace: possessions per game</span>}
-          <span>Small number: national rank</span>
-        </div>
+        {adv ? (
+          <div className="legend">
+            <span>Rating, Offense, Defense: {meta.effLabel}, adjusted for opponents and venue</span>
+            {meta.hoops && <span>Pace: possessions per game</span>}
+            <span>Small number: national rank</span>
+          </div>
+        ) : (
+          <p className="muted sm" style={{ margin: '10px 0 0' }}>
+            How to read a row: <b>{ex.short_name} {sign(exPg.rating, dp)}</b> means they'd beat an average team by about {Math.abs(exPg.rating).toFixed(meta.hoops ? 0 : 1)} {meta.pointWord} a game,
+            scoring {exPg.off.toFixed(dp)} and allowing {exPg.def.toFixed(dp)}.<span className="hide-sm"> The small gray number is where that offense or defense ranks nationally.</span>
+          </p>
+        )}
       </div>
     </>
   );

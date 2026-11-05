@@ -23,6 +23,17 @@ export function predict(a: Rating, b: Rating, L: League, site: 1 | 0 | -1, sport
   return { aPts, bPts, poss, margin, aWin: normCdf(margin / m.sd) };
 }
 
+// A stand-in rating for an opponent outside the rated division (a Division II or NAIA team on a non-conference
+// schedule). Set from the average margin rated teams have beaten such opponents by in our own data, so the
+// scoreboard can still give a pick instead of a blank. Marked as an estimate wherever it's shown.
+const OUTSIDER_MARGIN: Record<string, number> = { mbb: 40, wbb: 45, cfb: 29, bsb: 9, sb: 5.3 };
+export function outsider(L: League, sport: string): Rating {
+  const m = sportMeta(sport);
+  const em = (OUTSIDER_MARGIN[sport] ?? 20) * (m.scale / m.typicalUnits);
+  return { team_id: 0, adj_off: L.off - em / 2, adj_def: L.off + em / 2, adj_em: -em, tempo: L.tempo, rank: 0, off_rank: 0, def_rank: 0,
+    games_played: 0, short_name: '', abbreviation: '', color: null, logo_url: null } as unknown as Rating;
+}
+
 export function normCdf(z: number) {
   const t = 1 / (1 + 0.2316419 * Math.abs(z));
   const d = 0.3989423 * Math.exp((-z * z) / 2);
@@ -40,7 +51,7 @@ export const perGame = (r: Rating, sport: string) => {
 };
 export const ratingPG = (r: Rating, sport: string) => perGame(r, sport).rating;
 
-export const pct = (p: number) => `${Math.round(p * 100)}%`;
+export const pct = (p: number) => (p >= 0.995 ? '>99%' : p <= 0.005 ? '<1%' : `${Math.round(p * 100)}%`);
 export const f1 = (v: number) => (Number.isFinite(v) ? v.toFixed(1) : '–');
 export const f2 = (v: number) => (Number.isFinite(v) ? v.toFixed(2) : '–');
 export const sign = (v: number, dp = 1) => (v > 0 ? `+${v.toFixed(dp)}` : v.toFixed(dp));
