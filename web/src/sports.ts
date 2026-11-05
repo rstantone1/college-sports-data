@@ -17,11 +17,11 @@ export interface SportMeta {
 
 export const SPORTS: Record<string, SportMeta> = {
   mbb: { id: 'mbb', short: "Men's hoops", long: "Men's basketball", seasons: [{ year: 2027, label: '2026-27' }, { year: 2026, label: '2025-26' }],
-    scale: 100, typicalUnits: 68, unitWord: 'possessions', pointWord: 'points', effLabel: 'points per 100 possessions', hcaPerSide: 2.2, sd: 11, venue: 'court', hoops: true, tourney: { field: 68, autoBids: 31, atLargeRank: 45 } },
+    scale: 100, typicalUnits: 68, unitWord: 'possessions', pointWord: 'points', effLabel: 'points per 100 possessions', hcaPerSide: 2.2, sd: 11.3, venue: 'court', hoops: true, tourney: { field: 68, autoBids: 31, atLargeRank: 45 } },
   wbb: { id: 'wbb', short: "Women's hoops", long: "Women's basketball", seasons: [{ year: 2027, label: '2026-27' }, { year: 2026, label: '2025-26' }],
-    scale: 100, typicalUnits: 70, unitWord: 'possessions', pointWord: 'points', effLabel: 'points per 100 possessions', hcaPerSide: 2.2, sd: 11.5, venue: 'court', hoops: true, tourney: { field: 68, autoBids: 31, atLargeRank: 45 } },
+    scale: 100, typicalUnits: 70, unitWord: 'possessions', pointWord: 'points', effLabel: 'points per 100 possessions', hcaPerSide: 2.2, sd: 12.5, venue: 'court', hoops: true, tourney: { field: 68, autoBids: 31, atLargeRank: 45 } },
   cfb: { id: 'cfb', short: 'Football', long: 'Football (FBS)', seasons: [{ year: 2026, label: '2026' }],
-    scale: 10, typicalUnits: 11.5, unitWord: 'drives', pointWord: 'points', effLabel: 'points per 10 drives', hcaPerSide: 0.65, sd: 15.5, venue: 'field', hoops: false },
+    scale: 10, typicalUnits: 11.5, unitWord: 'drives', pointWord: 'points', effLabel: 'points per 10 drives', hcaPerSide: 0.65, sd: 16.8, venue: 'field', hoops: false },
   bsb: { id: 'bsb', short: 'Baseball', long: 'Baseball', seasons: [{ year: 2026, label: '2026' }],
     scale: 9, typicalUnits: 9, unitWord: 'innings', pointWord: 'runs', effLabel: 'runs per 9 innings', hcaPerSide: 0.15, sd: 4.3, venue: 'field', hoops: false },
   sb: { id: 'sb', short: 'Softball', long: 'Softball', seasons: [{ year: 2026, label: '2026' }],
