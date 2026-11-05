@@ -57,7 +57,7 @@ export function SchoolPage() {
                 return (
                   <tr key={r.sport_id} className="row">
                     <td className="l"><Link to={`/${r.sport_id}/${r.season_year}/team/${r.team_id}`}><b>{meta.long}</b> <span className="muted sm">{meta.seasons.find((x) => x.year === r.season_year)?.label ?? r.season_year}</span></Link></td>
-                    <td className="num big">#{r.rank}<span className="muted sm"> of {counts[i]}</span></td>
+                    <td className="num big">#{r.rank}<span className="muted sm hide-sm"> of {counts[i]}</span></td>
                     <td className="num" style={{ color: r.adj_em >= 0 ? 'var(--win)' : 'var(--hot)' }}>{sign(perGame(r, r.sport_id).rating, meta.hoops ? 1 : 1)}</td>
                     <td className="num">{p ? `${p.wins}-${p.losses}` : '–'}</td>
                     <td className="hide-sm l muted">{r.conference_short}</td>

@@ -62,20 +62,20 @@ export function TransfersPage() {
       <div className="panel">
         <div className="tblwrap">
           <table className="tbl">
-            <thead><tr><th className="l">Player</th><th className="l">From</th><th className="l">To</th><th>GP</th><th>PPG</th><th>RPG</th><th>APG</th><th className="hide-sm">FG%</th><th className="hide-sm">3P%</th></tr></thead>
+            <thead><tr><th className="l">Player</th><th className="l hide-sm">From</th><th className="l hide-sm">To</th><th className="hide-sm">GP</th><th>PPG</th><th className="hide-sm">RPG</th><th className="hide-sm">APG</th><th className="hide-sm">FG%</th><th className="hide-sm">3P%</th></tr></thead>
             <tbody>
               {rows.slice(0, 400).map((x) => {
                 const f = byId.get(x.from_team_id), to = byId.get(x.to_team_id);
                 const fg = x.fga ? `${(100 * Number(x.fgm) / Number(x.fga)).toFixed(0)}%` : '–', tp = x.tpa ? `${(100 * Number(x.tpm) / Number(x.tpa)).toFixed(0)}%` : '–';
                 return (
                   <tr key={`${x.player_id}-${x.to_team_id}`}>
-                    <td className="l"><Link to={`${base}/player/${x.player_id}`}><b>{x.display_name}</b></Link><div className="muted sm">{[x.position, x.class_year, ht(x.height_in), x.hometown && x.home_state ? `${x.hometown}, ${x.home_state}` : x.hometown].filter(Boolean).join(' · ')}</div></td>
-                    <td className="l"><Link to={`${base}/team/${x.from_team_id}`} className="team">{x.from_logo && <img src={x.from_logo} alt="" />}<span>{x.from_team}{f && <span className="muted sm"> #{f.rank}</span>}</span></Link></td>
-                    <td className="l"><Link to={`${base}/team/${x.to_team_id}`} className="team">{x.to_logo && <img src={x.to_logo} alt="" />}<span>{x.to_team}{to && <span className="muted sm"> #{to.rank}</span>}</span></Link></td>
-                    <td className="num">{x.gp ?? '–'}</td>
+                    <td className="l" style={{ whiteSpace: 'normal' }}><Link to={`${base}/player/${x.player_id}`}><b>{x.display_name}</b></Link><div className="muted sm">{[x.position, x.class_year, ht(x.height_in), x.hometown && x.home_state ? `${x.hometown}, ${x.home_state}` : x.hometown].filter(Boolean).join(' · ')}</div><div className="muted sm phone" style={{ display: 'block' }}>{x.from_team} → <b>{x.to_team}</b></div></td>
+                    <td className="l hide-sm"><Link to={`${base}/team/${x.from_team_id}`} className="team">{x.from_logo && <img src={x.from_logo} alt="" />}<span>{x.from_team}{f && <span className="muted sm"> #{f.rank}</span>}</span></Link></td>
+                    <td className="l hide-sm"><Link to={`${base}/team/${x.to_team_id}`} className="team">{x.to_logo && <img src={x.to_logo} alt="" />}<span>{x.to_team}{to && <span className="muted sm"> #{to.rank}</span>}</span></Link></td>
+                    <td className="num hide-sm">{x.gp ?? '–'}</td>
                     <td className="num" style={{ fontWeight: 700 }}>{pg(x.pts, x.gp)}</td>
-                    <td className="num">{pg(x.reb, x.gp)}</td>
-                    <td className="num">{pg(x.ast, x.gp)}</td>
+                    <td className="num hide-sm">{pg(x.reb, x.gp)}</td>
+                    <td className="num hide-sm">{pg(x.ast, x.gp)}</td>
                     <td className="hide-sm num">{fg}</td>
                     <td className="hide-sm num">{tp}</td>
                   </tr>

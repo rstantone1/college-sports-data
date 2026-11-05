@@ -17,7 +17,9 @@ export function TodayPage() {
   const { list: follows } = useFollows();
 
   // Default day: today if it has games, otherwise the latest day with games this season.
-  const latest = useAsync(() => rest<{ start_time: string }[]>(`games?select=start_time&sport_id=eq.${sport}&season_year=eq.${season}&start_time=lte.${new Date(Date.now() + 864e5).toISOString()}&order=start_time.desc&limit=1`), [sport, season]);
+  // Default day: today if it has games, otherwise the most recent day that did (the schedule runs a few days ahead).
+  const todayEnd = new Date(`${ymd(new Date())}T23:59:59`);
+  const latest = useAsync(() => rest<{ start_time: string }[]>(`games?select=start_time&sport_id=eq.${sport}&season_year=eq.${season}&start_time=lte.${todayEnd.toISOString()}&order=start_time.desc&limit=1`), [sport, season]);
   const day = sp.get('d') ?? (latest.data?.[0] ? ymd(new Date(latest.data[0].start_time)) : ymd(new Date()));
   const start = new Date(`${day}T00:00:00`), end = new Date(start.getTime() + 864e5);
   const games = useAsync(() => restAll<Game>(`v_games?sport_id=eq.${sport}&start_time=gte.${start.toISOString()}&start_time=lt.${end.toISOString()}&order=start_time.asc`), [sport, day]);
@@ -50,12 +52,14 @@ export function TodayPage() {
 
   return (
     <>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
-        <h1 style={{ marginRight: 'auto' }}>{isToday(day) ? 'Today' : fmtDate(start.toISOString(), { weekday: 'short', month: 'short', day: 'numeric' })}</h1>
-        <button className="btn ghost" onClick={() => shift(-1)} aria-label="Previous day">‹</button>
-        <input type="date" value={day} aria-label="Pick a day" onChange={(e) => e.target.value && setSp({ d: e.target.value }, { replace: true })}
-          style={{ font: 'inherit', padding: '9px 10px', borderRadius: 10, border: '1px solid var(--rule)', background: 'var(--panel)', color: 'var(--ink)', fontWeight: 600 }} />
-        <button className="btn ghost" onClick={() => shift(1)} aria-label="Next day">›</button>
+      <div className="dayhead">
+        <h1>{isToday(day) ? 'Today' : fmtDate(start.toISOString(), { weekday: 'short', month: 'short', day: 'numeric' })}</h1>
+        <div className="daynav">
+          <button className="btn ghost" onClick={() => shift(-1)} aria-label="Previous day">‹</button>
+          <input type="date" value={day} aria-label="Pick a day" onChange={(e) => e.target.value && setSp({ d: e.target.value }, { replace: true })} />
+          <button className="btn ghost" onClick={() => shift(1)} aria-label="Next day">›</button>
+          {!isToday(day) && <button className="btn ghost" onClick={() => setSp({}, { replace: true })}>Today</button>}
+        </div>
       </div>
 
       {isToday(day) && <YourTeams follows={follows} />}

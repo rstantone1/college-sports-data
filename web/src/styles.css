@@ -46,6 +46,7 @@ button{font:inherit;color:inherit}
 main{max-width:1180px;margin:0 auto;padding:16px 16px 90px}
 .phone{display:none}
 @media(max-width:720px){ .desk{display:none!important} .phone{display:inline-flex} .top-in{justify-content:space-between} }
+@media(min-width:721px){ .phone{display:none!important} }
 
 /* bottom tabs (phones) */
 .tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--panel);border-top:1px solid var(--rule);display:none;padding:6px 0 max(8px, env(safe-area-inset-bottom))}
@@ -124,7 +125,7 @@ h3{font-family:var(--display);font-weight:700;font-size:20px;margin:0 0 8px}
 .bar span{position:absolute;top:0;bottom:0;border-radius:4px}
 .tblwrap{overflow-x:auto;margin:0 -16px;padding:0 16px}
 .sm{font-size:12px}
-@media(max-width:640px){ .hide-sm{display:none} .tbl{font-size:14px} .tbl td{padding:7px 4px} .tbl th{padding:8px 4px} .tbl .rk{width:30px;font-size:17px;padding-left:0;padding-right:0} .tbl td.num{font-size:15px} .team{gap:6px} .team b{max-width:25vw} .team img{width:22px;height:22px} .swatch{height:22px} }
+@media(max-width:640px){ .hide-sm{display:none} .tbl{font-size:14px} .tbl td{padding:7px 4px} .tbl th{padding:8px 4px} .tbl .rk{width:30px;font-size:17px;padding-left:0;padding-right:0} .tbl td.num{font-size:15px} .team{gap:6px} .team b{max-width:24vw} .team img{width:22px;height:22px} .swatch{height:22px} }
 
 /* stat cards */
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
@@ -194,3 +195,10 @@ h3{font-family:var(--display);font-weight:700;font-size:20px;margin:0 0 8px}
 .legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px}
 .skel{background:linear-gradient(90deg,var(--soft),var(--rule),var(--soft));background-size:200% 100%;animation:sk 1.2s infinite;border-radius:8px;height:18px;margin:8px 0}
 @keyframes sk{to{background-position:-200% 0}}
+
+/* today header */
+.dayhead{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.dayhead h1{margin:0}
+.daynav{display:flex;gap:6px;align-items:center;flex-wrap:nowrap}
+.daynav input{font:inherit;padding:8px 8px;border-radius:10px;border:1px solid var(--rule);background:var(--panel);color:var(--ink);font-weight:600;max-width:150px}
+.daynav .btn{padding:9px 12px}

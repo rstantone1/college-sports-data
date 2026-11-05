@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, Navigate, useParams } from 'react-router-dom';
 import { rest, restAll } from '../api';
 import { useAsync, useCtx, useRatings, teamColor, onColor, fmtDate } from '../hooks';
 import { Back, Loading, ErrorBox } from '../components/Shell';
@@ -31,6 +31,8 @@ export function PlayerPage() {
   if (player.error || !player.data) return <ErrorBox msg={player.error ?? 'Player not found.'} />;
 
   const p = player.data;
+  // Player ids are global; a link from the wrong sport's pages lands here. Send it to the player's own sport.
+  if (p.sport_id && p.sport_id !== sport) return <Navigate to={`/${p.sport_id}/${season}/player/${id}`} replace />;
   const rs = roster.data ?? [];
   const cur = rs.find((r) => r.season_year === season) ?? rs[0];
   const bio = rs.reduce((acc, r) => ({ height_in: acc.height_in ?? r.height_in, weight_lb: acc.weight_lb ?? r.weight_lb, class_year: acc.class_year ?? r.class_year, hometown: acc.hometown ?? r.hometown, home_state: acc.home_state ?? r.home_state, home_country: acc.home_country ?? r.home_country, position: acc.position ?? r.position, jersey: acc.jersey ?? r.jersey }), { height_in: null, weight_lb: null, class_year: null, hometown: null, home_state: null, home_country: null, position: null, jersey: null } as any);
