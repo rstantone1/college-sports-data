@@ -30,7 +30,7 @@ export interface Rating {
   adj_off: number; adj_def: number; adj_em: number; tempo: number; raw_off: number; raw_def: number;
   rank: number; off_rank: number; def_rank: number;
   display_name: string; short_name: string; mascot: string; abbreviation: string; color: string | null; alt_color: string | null;
-  logo_url: string | null; conference_id: number | null; conference_name: string | null; conference_short: string | null;
+  logo_url: string | null; conference_id: number | null; conference_name: string | null; conference_short: string | null; team_espn_id?: string | null;
 }
 
 export interface Game {

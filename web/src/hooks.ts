@@ -75,3 +75,30 @@ export function useLocal<T>(key: string, init: T): [T, (v: T) => void] {
   const set = (x: T) => { setV(x); try { localStorage.setItem(key, JSON.stringify(x)); } catch { /* storage unavailable */ } };
   return [v, set];
 }
+
+// Teams the person follows. Lives on the device (no account); shared across tabs through a storage event.
+export interface Follow { sport: string; season: number; team_id: number; name: string; logo: string | null }
+const FOLLOW_KEY = 'follow:v1';
+const readFollows = (): Follow[] => { try { return JSON.parse(localStorage.getItem(FOLLOW_KEY) ?? '[]'); } catch { return []; } };
+const followListeners = new Set<() => void>();
+export function useFollows() {
+  const [list, setList] = useState<Follow[]>(readFollows);
+  useEffect(() => {
+    const fn = () => setList(readFollows());
+    followListeners.add(fn); window.addEventListener('storage', fn);
+    return () => { followListeners.delete(fn); window.removeEventListener('storage', fn); };
+  }, []);
+  const write = (next: Follow[]) => { try { localStorage.setItem(FOLLOW_KEY, JSON.stringify(next)); } catch { /* unavailable */ } followListeners.forEach((f) => f()); };
+  const has = (sport: string, team_id: number) => list.some((f) => f.sport === sport && f.team_id === team_id);
+  const toggle = (f: Follow) => write(has(f.sport, f.team_id) ? list.filter((x) => !(x.sport === f.sport && x.team_id === f.team_id)) : [...list, f].slice(-12));
+  return { list, has, toggle };
+}
+
+// Where a value sits among its peers, 0-100. `higherIsBetter` false flips it so 100 is always good.
+export function percentile(values: number[], v: number, higherIsBetter = true) {
+  const xs = values.filter((x) => Number.isFinite(x));
+  if (!xs.length || !Number.isFinite(v)) return null;
+  const below = xs.filter((x) => (higherIsBetter ? x < v : x > v)).length;
+  const equal = xs.filter((x) => x === v).length;
+  return Math.round(((below + equal / 2) / xs.length) * 100);
+}

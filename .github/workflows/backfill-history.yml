@@ -31,7 +31,7 @@ jobs:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       FETCH_DELAY_MS: "350"
       RAW_CACHE: "0"
-      PG_POOL_MAX: "2"
+      PG_POOL_MAX: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

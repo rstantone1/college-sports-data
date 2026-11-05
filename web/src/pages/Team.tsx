@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { rest, restAll, type Game } from '../api';
 import { useAsync, useCtx, useRatings, teamColor, onColor, fmtDate } from '../hooks';
-import { Back, Loading, ErrorBox } from '../components/Shell';
+import { Back, Loading, ErrorBox, FollowButton } from '../components/Shell';
+import { ProfileBars, WhyRanked, useProfiles } from '../components/TeamProfile';
 import { LineChart } from '../components/Charts';
 import { f1, sign, pct, predict, league, perGame } from '../model';
 
@@ -22,6 +23,7 @@ export function TeamPage() {
   const diamond = useAsync(() => !meta.hoops ? rest<DiamondLine[]>(`mv_diamond_season?team_id=eq.${id}&season_year=eq.${season}&order=h.desc.nullslast`) : Promise.resolve([] as DiamondLine[]), [id, season, meta.hoops]);
   const hist = useAsync(() => restAll<{ as_of: string; adj_em: number; rank: number }>(`ratings?select=as_of,adj_em,rank&team_id=eq.${id}&season_year=eq.${season}&order=as_of.asc`), [id, season]);
   const [tab, setTab] = useState<'sched' | 'roster'>('sched');
+  const profiles = useProfiles(sport, season);
 
   const me = R.data?.find((r) => r.team_id === id);
   const byId = useMemo(() => new Map((R.data ?? []).map((r) => [r.team_id, r])), [R.data]);
@@ -37,6 +39,7 @@ export function TeamPage() {
   const done = (games.data ?? []).filter((g) => g.completed && g.home_score != null);
   const wins = done.filter((g) => (g.home_team_id === id ? g.home_score! > g.away_score! : g.away_score! > g.home_score!)).length;
   const upcoming = (games.data ?? []).filter((g) => !g.completed);
+  const nextGame = upcoming.find((g) => new Date(g.start_time).getTime() > Date.now() - 4 * 3600e3);
   let projW = wins;
   for (const g of upcoming) {
     const oppId = g.home_team_id === id ? g.away_team_id : g.home_team_id;
@@ -56,7 +59,11 @@ export function TeamPage() {
           <div>
             <h1 style={{ color: ink }}>{me.short_name}</h1>
             <div style={{ fontWeight: 600, opacity: .9 }}>{me.mascot} · {me.conference_name ?? 'Independent'} · {wins}-{done.length - wins}</div>
-            {me.conference_id && <Link to={`${base}/conf/${me.conference_id}`} style={{ fontWeight: 700, textDecoration: 'underline', fontSize: 14 }}>See the {me.conference_short}</Link>}
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginTop: 8 }}>
+              <FollowButton sport={sport} season={season} team_id={id} name={me.short_name} logo={me.logo_url} />
+              {me.conference_id && <Link to={`${base}/conf/${me.conference_id}`} style={{ fontWeight: 700, textDecoration: 'underline', fontSize: 14 }}>{me.conference_short} race</Link>}
+              {me.team_espn_id && <Link to={`/school/${me.team_espn_id}`} style={{ fontWeight: 700, textDecoration: 'underline', fontSize: 14 }}>All sports</Link>}
+            </div>
           </div>
           <div className="rankbig">#{me.rank}<small>of {R.data!.length} nationally</small></div>
         </div>
@@ -68,6 +75,31 @@ export function TeamPage() {
         <div className="card"><div className="k">Defense</div><div className="v">{perGame(me, sport).def.toFixed(dp)}</div><div className="r">allowed per game · #{me.def_rank}</div></div>
         {meta.hoops && <div className="card"><div className="k">Pace</div><div className="v">{f1(me.tempo)}</div><div className="r">possessions / game</div></div>}
         {upcoming.length > 0 && <div className="card"><div className="k">Projected record</div><div className="v">{Math.round(projW)}-{totalG - Math.round(projW)}</div><div className="r">{wins}-{done.length - wins} so far</div></div>}
+      </div>
+
+      {nextGame && (() => {
+        const home = nextGame.home_team_id === id; const oppId = home ? nextGame.away_team_id : nextGame.home_team_id; const opp = byId.get(oppId);
+        const pr = opp ? predict(me, opp, L, (nextGame.neutral_site ? 0 : home ? 1 : -1) as 1 | 0 | -1, sport) : null;
+        return (
+          <Link to={`${base}/game/${nextGame.id}`} className="panel" style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
+            <span className="muted sm" style={{ fontWeight: 700 }}>NEXT</span>
+            <span style={{ fontWeight: 700, fontSize: 17 }}>{nextGame.neutral_site ? 'vs' : home ? 'vs' : 'at'} {home ? nextGame.away_name : nextGame.home_name}{opp ? <span className="muted sm"> #{opp.rank}</span> : ''}</span>
+            <span className="muted">{fmtDate(nextGame.start_time, { weekday: 'short', month: 'short', day: 'numeric' })} · {new Date(nextGame.start_time).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</span>
+            {pr && <span className={`pill ${pr.aWin >= .5 ? 'win' : 'loss'}`} style={{ marginLeft: 'auto', fontSize: 14 }}>{pct(pr.aWin)} to win · {Math.round(pr.aPts)}-{Math.round(pr.bPts)}</span>}
+          </Link>
+        );
+      })()}
+
+      <div className="grid g2" style={{ marginBottom: 16 }}>
+        <div className="panel">
+          <h3 style={{ marginBottom: 2 }}>What they're good at</h3>
+          <p className="muted sm" style={{ margin: '0 0 10px' }}>Each bar is where {me.short_name} ranks among all {R.data!.length} teams this season. Right and warm is good, left and cool is bad.</p>
+          {profiles.loading ? <Loading rows={5} /> : (() => { const mine = profiles.data?.find((p) => p.team_id === id); return mine ? <ProfileBars me={mine} all={profiles.data!} ratings={R.data!} /> : <p className="muted sm">Appears after the first game.</p>; })()}
+        </div>
+        <div className="panel">
+          <h3 style={{ marginBottom: 2 }}>Why #{me.rank}?</h3>
+          <WhyRanked teamId={id} games={games.data ?? []} byId={byId} />
+        </div>
       </div>
 
       <div className="grid g2">

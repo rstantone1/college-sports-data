@@ -7,7 +7,9 @@ import { RatingsPage } from './pages/Ratings';
 import { TeamPage } from './pages/Team';
 import { GamePage } from './pages/Game';
 import { MatchupPage } from './pages/Matchup';
-import { ScoresPage } from './pages/Scores';
+import { TodayPage } from './pages/Today';
+import { SchoolPage } from './pages/School';
+import { RecordPage } from './pages/Record';
 import { BallotPage } from './pages/Ballot';
 import { ConferencePage } from './pages/Conference';
 import { AboutPage } from './pages/About';
@@ -20,10 +22,13 @@ createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Navigate to="/mbb/2027" replace />} />
+        <Route path="/" element={<Navigate to="/mbb/2027/today" replace />} />
+        <Route path="/record" element={<Shell><RecordPage /></Shell>} />
+        <Route path="/school/:espnId" element={<Shell><SchoolPage /></Shell>} />
         <Route path="/about" element={<Shell><AboutPage /></Shell>} />
         <Route path="/:sport/:season" element={<Shell><RatingsPage /></Shell>} />
-        <Route path="/:sport/:season/scores" element={<Shell><ScoresPage /></Shell>} />
+        <Route path="/:sport/:season/today" element={<Shell><TodayPage /></Shell>} />
+        <Route path="/:sport/:season/scores" element={<Shell><TodayPage /></Shell>} />
         <Route path="/:sport/:season/matchup" element={<Shell><MatchupPage /></Shell>} />
         <Route path="/:sport/:season/ballot" element={<Shell><BallotPage /></Shell>} />
         <Route path="/:sport/:season/tournament" element={<Shell><TournamentPage /></Shell>} />
@@ -33,7 +38,7 @@ createRoot(document.getElementById('root')!).render(
         <Route path="/:sport/:season/player/:playerId" element={<Shell><PlayerPage /></Shell>} />
         <Route path="/:sport/:season/game/:gameId" element={<Shell><GamePage /></Shell>} />
         <Route path="/:sport/:season/conf/:confId" element={<Shell><ConferencePage /></Shell>} />
-        <Route path="*" element={<Navigate to="/mbb/2027" replace />} />
+        <Route path="*" element={<Navigate to="/mbb/2027/today" replace />} />
       </Routes>
     </BrowserRouter>
   </React.StrictMode>

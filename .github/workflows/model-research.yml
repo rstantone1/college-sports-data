@@ -26,6 +26,7 @@ jobs:
           - { sport: sb, from: 2016, to: 2026, train: 2017-2022, test: 2023-2026 }
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      PG_POOL_MAX: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

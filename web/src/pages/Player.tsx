@@ -4,7 +4,10 @@ import { rest, restAll } from '../api';
 import { useAsync, useCtx, useRatings, teamColor, onColor, fmtDate } from '../hooks';
 import { Back, Loading, ErrorBox } from '../components/Shell';
 import { ShotChart } from '../components/Charts';
+import { Bars, type BarRow } from '../components/Bars';
+import { percentile } from '../hooks';
 
+interface AdvRow { player_id: number; team_id: number; gp: number; min: number; ppg: number; rpg: number; apg: number; mpg: number; pts40: number; reb40: number; ast40: number; stl40: number; blk40: number; tov40: number; efg: number; ts: number; tp_pct: number | null; ft_pct: number | null; tpa_rate: number; ftr: number; ast_tov: number | null; usage: number; min_share: number }
 interface RosterRow { team_id: number; season_year: number; jersey: string | null; position: string | null; height_in: number | null; weight_lb: number | null; class_year: string | null; hometown: string | null; home_state: string | null; home_country: string | null }
 interface GameRow { game_id: number; team_id: number; season_year: number; start_time: string; completed: boolean; starter: boolean | null; did_not_play: boolean; stat_group: string | null; stats: Record<string, number>; opp_team_id: number; team_score: number | null; opp_score: number | null; site: 'H' | 'A' | 'N' }
 
@@ -19,6 +22,8 @@ export function PlayerPage() {
   const player = useAsync(() => rest<{ id: number; display_name: string; sport_id: string }[]>(`players?id=eq.${id}`).then((r) => r[0]), [id]);
   const roster = useAsync(() => rest<RosterRow[]>(`rosters?player_id=eq.${id}&order=season_year.desc`), [id]);
   const games = useAsync(() => restAll<GameRow>(`v_player_games?player_id=eq.${id}&order=start_time.desc`), [id]);
+  // Advanced stats for every regular in the sport this season (at least 40 minutes), for the percentile bars.
+  const adv = useAsync(() => meta.hoops ? restAll<AdvRow>(`v_player_adv?sport_id=eq.${sport}&season_year=eq.${season}&min=gte.40&select=player_id,team_id,gp,min,ppg,rpg,apg,mpg,pts40,reb40,ast40,stl40,blk40,tov40,efg,ts,tp_pct,ft_pct,tpa_rate,ftr,ast_tov,usage,min_share`) : Promise.resolve([] as AdvRow[]), [sport, season, meta.hoops]);
   const shots = useAsync(() => meta.hoops ? rest<{ game_id: number; x: number; y: number; made: boolean; three: boolean }[]>(`rpc/player_shots?p_player_id=${id}&p_season=${season}`) : Promise.resolve([]), [id, season, meta.hoops]);
   const byId = useMemo(() => new Map((R.data ?? []).map((r) => [r.team_id, r])), [R.data]);
 
@@ -69,7 +74,7 @@ export function PlayerPage() {
   return (
     <>
       <Back />
-      <section className="hero" style={{ background: `linear-gradient(120deg, ${color} 0%, ${color} 60%, ${teamColor(team?.alt_color, '#000')} 140%)`, color: ink }}>
+      <section className="hero" style={{ background: color, color: ink }}>
         <div className="in">
           <div style={{ width: 84, height: 84, borderRadius: '50%', background: 'rgba(255,255,255,.92)', color, display: 'grid', placeItems: 'center', fontFamily: 'var(--display)', fontWeight: 800, fontSize: 34, flex: '0 0 auto' }}>{initials}</div>
           <div>
@@ -93,6 +98,35 @@ export function PlayerPage() {
           {cards.map(([k, v, r]) => <div className="card" key={k}><div className="k">{k}</div><div className="v">{v}</div><div className="r">{r}</div></div>)}
         </div>
       ) : <div className="panel" style={{ marginBottom: 16 }}><p className="muted" style={{ margin: 0 }}>No games yet this season.</p></div>}
+
+      {meta.hoops && gp > 0 && (() => {
+        const rows = (adv.data ?? []).map((r) => Object.fromEntries(Object.entries(r).map(([k, v]) => [k, v == null ? null : Number(v)])) as unknown as AdvRow);
+        // Compare against players with a real role: at least a quarter of their team's minutes.
+        const peers = rows.filter((r) => r.min_share >= 0.25 && r.gp >= 3);
+        const mine = rows.find((r) => r.player_id === id);
+        if (!mine || peers.length < 20) return null;
+        const col = (k: keyof AdvRow) => peers.map((r) => r[k] as number);
+        const P = (v: number | null) => (v == null ? '–' : `${(v * 100).toFixed(1)}%`);
+        const F = (v: number | null, d = 1) => (v == null ? '–' : v.toFixed(d));
+        const row = (label: string, k: keyof AdvRow, fmt: (v: number | null) => string, higher = true, note?: string): BarRow => ({ label, value: fmt(mine[k] as number | null), pct: percentile(col(k), mine[k] as number, higher), note });
+        const prod: BarRow[] = [
+          row('Scoring', 'pts40', F, true, 'points per 40 minutes'), row('Rebounding', 'reb40', F, true, 'rebounds per 40'), row('Passing', 'ast40', F, true, 'assists per 40'),
+          row('Steals', 'stl40', (v) => F(v, 1)), row('Blocks', 'blk40', (v) => F(v, 1)), row('Ball security', 'tov40', (v) => F(v, 1), false, 'turnovers per 40; lower is better'),
+        ];
+        const eff: BarRow[] = [
+          row('Usage', 'usage', P, true, 'share of the team\'s possessions this player ends while on the floor (role, not good or bad)'),
+          row('Shooting efficiency', 'ts', P, true, 'true shooting %: points per shot, counting threes and free throws'),
+          row('3-point %', 'tp_pct', P), row('Free throw %', 'ft_pct', P), row('Assist-to-turnover', 'ast_tov', (v) => F(v, 2)),
+          row('Minutes', 'mpg', F, true, 'per game'),
+        ];
+        return (
+          <div className="panel" style={{ marginBottom: 16 }}>
+            <h3 style={{ marginBottom: 2 }}>What kind of player</h3>
+            <p className="muted sm" style={{ margin: '0 0 10px' }}>Each bar is where {p.display_name.split(' ').slice(-1)[0]} ranks among the {peers.length.toLocaleString()} regulars in {meta.long.toLowerCase()} this season.</p>
+            <div className="grid g2e"><Bars title="Production, per 40 minutes" rows={prod} /><Bars title="Role and efficiency" rows={eff} /></div>
+          </div>
+        );
+      })()}
 
       <div className="grid g2">
         <div className="panel">
