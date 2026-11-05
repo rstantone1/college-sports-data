@@ -10,7 +10,7 @@ async function pace() { const w = last + DELAY - Date.now(); if (w > 0) await ne
 
 async function get(path: string, attempt = 1): Promise<any> {
   await pace();
-  const res = await fetch(`${BASE}/${path}`, { headers: { accept: 'application/json', 'user-agent': 'college-sports-data/0.1' } });
+  const res = await fetch(`${BASE}/${path}`, { headers: { accept: 'application/json', 'user-agent': 'college-sports-data/0.1' }, signal: AbortSignal.timeout(20000) });  // never hang a run on one slow request
   if (res.status === 404) return null;
   if (res.status === 429 || res.status >= 500) {
     if (attempt >= 5) throw new Error(`ncaa ${res.status} after ${attempt} tries: ${path}`);
@@ -181,7 +181,11 @@ export async function ingestNcaaBox(s: SportConfig, seasonYear: number, opts: { 
         await q(`update games set box_fetched_at=now() where id=$1`, [g.id]);
         n++;
         if (n % 200 === 0) console.log(`${s.id}: ${n}/${todo.length} box scores`);
-      } catch (e) { console.warn(`box ${s.id}/${g.espn_id}: ${(e as Error).message}`); }
+      } catch (e) {
+        console.warn(`box ${s.id}/${g.espn_id}: ${(e as Error).message}`);
+        // A box score that still fails three days after the game isn't coming; stop retrying it every run.
+        await q(`update games set box_fetched_at=now() where id=$1 and start_time < now() - interval '3 days'`, [g.id]).catch(() => {});
+      }
     }
   };
   await Promise.all(Array.from({ length: 4 }, work));

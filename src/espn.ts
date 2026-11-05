@@ -16,7 +16,7 @@ async function pace() {
 
 async function getJson(url: string, attempt = 1): Promise<any> {
   await pace();
-  const res = await fetch(url, { headers: { 'user-agent': UA, accept: 'application/json' } });
+  const res = await fetch(url, { headers: { 'user-agent': UA, accept: 'application/json' }, signal: AbortSignal.timeout(20000) });
   if (res.status === 429 || res.status >= 500) {
     if (attempt >= 4) throw new Error(`ESPN ${res.status} after ${attempt} tries: ${url}`);
     await new Promise((r) => setTimeout(r, 1500 * attempt * attempt));

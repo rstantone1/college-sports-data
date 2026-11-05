@@ -19,7 +19,7 @@ concurrency:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 240
+    timeout-minutes: 75
     strategy:
       fail-fast: false
       matrix:
