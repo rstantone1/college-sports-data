@@ -1,0 +1,34 @@
+name: Replay a season
+
+# Manual: replay a finished season week by week and save each pick as a labelled replay for the track record.
+on:
+  workflow_dispatch:
+    inputs:
+      sports:
+        description: 'Sports as a JSON list, e.g. ["mbb","wbb","cfb"]'
+        required: true
+        default: '["mbb","wbb"]'
+      season:
+        description: "Season year to replay"
+        required: true
+        default: "2026"
+
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      max-parallel: 1
+      matrix:
+        sport: ${{ fromJSON(inputs.sports) }}
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      PG_POOL_MAX: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsx src/cli.ts replay --sport=${{ matrix.sport }} --season=${{ inputs.season }}

@@ -97,6 +97,30 @@ async function main() {
       break;
     }
 
+    // Replay a past season week by week (ratings from earlier games only) and store each pick as kind='replay',
+    // so the track record shows a full season the model never saw, clearly labelled as a replay.
+    case 'replay': {
+      const s = sport(args.sport); const y = Number(args.season);
+      const { loadSeason, sportModel } = await import('./model/pack.js');
+      const { walkForward } = await import('./model/backtest.js');
+      const { paramsFor } = await import('./model/params.js');
+      const { normCdf } = await import('./model/engine.js');
+      const { RESULT_SD } = await import('./predictions.js');
+      const seasons = [await loadSeason(s, y - 1), await loadSeason(s, y)];
+      const res = walkForward(sportModel(s), seasons.filter((x) => x.games.length), paramsFor(s.id));
+      const preds = res.find((r) => r.season === y)?.preds ?? [];
+      const sd = RESULT_SD[s.id] ?? 10;
+      await q(`delete from predictions where sport_id=$1 and season_year=$2 and kind='replay'`, [s.id, y]);
+      for (let i = 0; i < preds.length; i += 400) {
+        const chunk = preds.slice(i, i + 400);
+        const vals = chunk.map((_, k) => `($1,$2,$${k * 4 + 3},'replay',to_timestamp($${k * 4 + 4}::double precision/1000),'replay-v1',$${k * 4 + 5},$${k * 4 + 6},false)`).join(',');
+        await q(`insert into predictions(sport_id, season_year, game_id, kind, made_at, model_version, home_prob, margin, estimated) values ${vals} on conflict do nothing`,
+          [s.id, y, ...chunk.flatMap((p) => [p.id, p.t - 3600e3, normCdf(p.margin / sd), p.margin])]);
+      }
+      console.log(`${s.id} ${y}: ${preds.length} replayed picks saved (prior season ${seasons[0].games.length ? 'loaded' : 'missing'})`);
+      break;
+    }
+
     // Write picks for upcoming games without re-ingesting anything.
     case 'predict': {
       const s = sport(args.sport); const y = season(s.id);
