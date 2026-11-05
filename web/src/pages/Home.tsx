@@ -6,6 +6,7 @@ import { predict, league, perGame, sign, pct, ovr } from '../model';
 import { onColor, distinctPair } from '../hooks';
 import { SPORTS, sportMeta } from '../sports';
 import { GameCard, YourTeams } from './Today';
+import { SinceLastVisit } from '../components/Since';
 
 // Rough playing windows, by month. Off-season sports drop to the bottom with their opening month.
 const SEASON_MONTHS: Record<string, number[]> = { mbb: [11, 12, 1, 2, 3, 4], wbb: [11, 12, 1, 2, 3, 4], cfb: [8, 9, 10, 11, 12, 1], bsb: [2, 3, 4, 5, 6], sb: [2, 3, 4, 5, 6] };
@@ -105,6 +106,7 @@ export function HomePage() {
         })}
       </nav>
 
+      <SinceLastVisit follows={follows} />
       <YourTeams follows={follows} />
 
       {data.loading ? <Loading rows={6} /> : (

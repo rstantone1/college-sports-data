@@ -4,7 +4,8 @@ import { rest, restAll, ratingsFor, type Game, type Rating } from '../api';
 import { useAsync, useCtx, useRatings, useFollows, fmtTime, fmtDate, type Follow } from '../hooks';
 import { Loading, ErrorBox } from '../components/Shell';
 import { TeamPicker } from '../components/TeamPicker';
-import { predict, league, pct, outsider, type League } from '../model';
+import { Spark } from '../components/Charts';
+import { predict, league, pct, outsider, perGame, sign, type League } from '../model';
 import { sportMeta } from '../sports';
 
 const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -132,12 +133,13 @@ function YourTeamsList({ follows, onPick }: { follows: Follow[]; onPick: () => v
     for (const f of follows) {
       const meta = sportMeta(f.sport);
       const season = meta.seasons[0].year;
-      const [rs, next, last] = await Promise.all([
+      const [rs, next, last, hist] = await Promise.all([
         ratingsFor(f.sport, season),
         rest<Game[]>(`v_games?sport_id=eq.${f.sport}&season_year=eq.${season}&completed=eq.false&start_time=gte.${new Date(Date.now() - 4 * 3600e3).toISOString()}&or=(home_team_id.eq.${f.team_id},away_team_id.eq.${f.team_id})&order=start_time.asc&limit=1`),
         rest<Game[]>(`v_games?sport_id=eq.${f.sport}&season_year=eq.${season}&completed=eq.true&or=(home_team_id.eq.${f.team_id},away_team_id.eq.${f.team_id})&order=start_time.desc&limit=1`),
+        rest<{ as_of: string; adj_em: string | number }[]>(`ratings?select=as_of,adj_em&games_played=gte.3&sport_id=eq.${f.sport}&season_year=eq.${season}&team_id=eq.${f.team_id}&order=as_of.asc`),
       ]);
-      out.push({ f, season, rs, next: next[0], last: last[0] });
+      out.push({ f, season, rs, next: next[0], last: last[0], hist });
     }
     return out;
   }, [follows.map((f) => `${f.sport}:${f.team_id}`).join(',')]);
@@ -152,7 +154,7 @@ function YourTeamsList({ follows, onPick }: { follows: Follow[]; onPick: () => v
     <section style={{ marginBottom: 18 }}>
       <div className="rowhead"><h2 style={{ fontSize: 22 }}>Your teams</h2><button className="btn ghost" onClick={onPick}>＋ Add or remove</button></div>
       <div className="games">
-        {(data.data ?? []).map(({ f, season, rs, next, last }) => {
+        {(data.data ?? []).map(({ f, season, rs, next, last, hist }) => {
           const byId = new Map(rs.map((r) => [r.team_id, r]));
           const me = byId.get(f.team_id);
           const L: League = league(rs);
@@ -170,6 +172,11 @@ function YourTeamsList({ follows, onPick }: { follows: Follow[]; onPick: () => v
             const today = ymd(new Date(next.start_time)) === ymd(new Date());
             return <span>{today ? 'Today' : fmtDate(next.start_time, { weekday: 'short', month: 'short', day: 'numeric' })} {fmtTime(next.start_time)} · {next.neutral_site ? 'vs' : home ? 'vs' : 'at'} {oppName}{opp ? ` (#${opp.rank})` : ''}{pr ? <> · <b>{pct(pr.aWin)}</b> to win</> : ''}</span>;
           })() : <span className="muted">No upcoming game on the schedule</span>;
+          // Rating over the season, in points per game: the shape of the line and how far it moved.
+          const k = sportMeta(f.sport).typicalUnits / sportMeta(f.sport).scale;
+          const trend = hist.map((h) => Number(h.adj_em) * k);
+          const change = trend.length >= 3 ? trend[trend.length - 1] - trend[0] : 0;
+          const weeks = trend.length >= 3 ? Math.max(1, Math.round((Date.parse(hist[hist.length - 1].as_of) - Date.parse(hist[0].as_of)) / (7 * 864e5))) : 0;
           return (
             <Link key={`${f.sport}:${f.team_id}`} to={`/${f.sport}/${season}/team/${f.team_id}`} className="gcard" style={{ borderLeft: `4px solid ${me?.color ? '#' + me.color : 'var(--rule)'}` }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
@@ -181,6 +188,12 @@ function YourTeamsList({ follows, onPick }: { follows: Follow[]; onPick: () => v
                 <div><span className="muted">Next: </span>{nextLine}</div>
                 <div><span className="muted">Last: </span>{lastLine}</div>
               </div>
+              {trend.length >= 3 && (
+                <div className="trend">
+                  <Spark values={trend} color={change >= 0 ? 'var(--win)' : 'var(--hot)'} />
+                  <span className="sm"><b style={{ color: change >= 0 ? 'var(--win)' : 'var(--hot)' }}>{sign(change, 1)}</b> <span className="muted">in rating, {weeks <= 1 ? 'this week' : `past ${weeks} weeks`}</span></span>
+                </div>
+              )}
             </Link>
           );
         })}

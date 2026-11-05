@@ -318,3 +318,14 @@ button.sheet-row{border:0;font:inherit;font-weight:600;font-size:17px;color:var(
 .pick-row .chk{margin-left:auto;flex:0 0 auto;width:30px;height:30px;border-radius:50%;border:2px solid var(--rule);display:grid;place-items:center;font-weight:800;font-size:16px}
 .pick-row.on .chk{background:var(--win);border-color:var(--win);color:#fff}
 .picker-foot{padding:12px 16px max(14px,env(safe-area-inset-bottom));border-top:1px solid var(--rule)}
+
+/* Since you were last here, and the trend on followed-team cards */
+.since{margin-bottom:18px}
+.since h2{font-size:22px;margin-bottom:8px}
+.since h2 .muted{font-size:16px;font-weight:600}
+.since-list{background:var(--panel);border:1px solid var(--rule);border-radius:var(--r);overflow:hidden}
+.since-row{display:flex;gap:12px;align-items:flex-start;padding:13px 14px;border-bottom:1px solid var(--rule);font-size:16px;line-height:1.35}
+.since-row:last-child{border-bottom:0}
+.since-row img{object-fit:contain;margin-top:2px}
+.since-row:hover{background:var(--soft)}
+.trend{display:flex;align-items:center;gap:10px;margin-top:10px;padding-top:8px;border-top:1px solid var(--rule)}

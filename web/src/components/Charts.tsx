@@ -26,6 +26,21 @@ export function LineChart({ points, color, height = 160, yLabel, invert = false 
   );
 }
 
+// A tiny trend line with no axes: just the shape of the season, ending in a dot for today.
+export function Spark({ values, color, w = 96, h = 30 }: { values: number[]; color: string; w?: number; h?: number }) {
+  if (values.length < 3) return null;
+  const lo = Math.min(...values), hi = Math.max(...values), span = hi - lo || 1, pad = 4;
+  const x = (i: number) => pad + (i / (values.length - 1)) * (w - pad * 2);
+  const y = (v: number) => h - pad - ((v - lo) / span) * (h - pad * 2);
+  const d = values.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join('');
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} width={w} height={h} aria-hidden="true" style={{ display: 'block', flex: '0 0 auto' }}>
+      <path d={d} fill="none" stroke={color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+      <circle cx={x(values.length - 1)} cy={y(values[values.length - 1])} r="3.5" fill={color} />
+    </svg>
+  );
+}
+
 // Score margin through a game (home perspective). Positive = home leading.
 export function FlowChart({ series, homeColor, awayColor, homeName, awayName }: {
   series: { t: number; m: number }[]; homeColor: string; awayColor: string; homeName: string; awayName: string;

@@ -106,3 +106,18 @@ export function percentile(values: number[], v: number, higherIsBetter = true) {
   const equal = xs.filter((x) => x === v).length;
   return Math.round(((below + equal / 2) / xs.length) * 100);
 }
+
+// When the person was last here, before this visit. A visit ends after 30 quiet minutes; reloading inside one
+// doesn't reset it. Lives on the device. Null on the very first visit.
+const VISIT_KEY = 'visit:v1';
+export const lastVisit: number | null = (() => {
+  try {
+    const raw = JSON.parse(localStorage.getItem(VISIT_KEY) ?? 'null') as { since: number | null; seen: number } | null;
+    const now = Date.now();
+    const since = raw ? (now - raw.seen > 30 * 60e3 ? raw.seen : raw.since) : null;
+    const save = (seen: number) => { try { localStorage.setItem(VISIT_KEY, JSON.stringify({ since, seen })); } catch { /* unavailable */ } };
+    save(now);
+    setInterval(() => save(Date.now()), 5 * 60e3);
+    return since;
+  } catch { return null; }
+})();
