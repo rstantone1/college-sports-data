@@ -20,7 +20,14 @@ export function betText(b: Pick<Bet, 'market' | 'side' | 'line'>, homeName: stri
 }
 export const TIER: Record<string, { label: string; cls: string }> = {
   best: { label: 'Best bet', cls: 'tier best' }, strong: { label: 'Strong', cls: 'tier strong' }, lean: { label: 'Lean', cls: 'tier lean' },
+  value: { label: 'Best price', cls: 'tier value' },
 };
+// American odds as written: +120, −110.
+export const oddsText = (a: number | null) => (a == null ? '' : a > 0 ? `+${a}` : `${M}${Math.abs(a)}`);
+export const isPrice = (b: Pick<Bet, 'stat'>) => b.stat === 'price';
+// A best-price pick in words: "Texas −2.5 at FanDuel, −105".
+export const priceText = (b: Bet) => `${betText(b, b.home_name, b.away_name)}${b.book ? ` at ${bookLabel(b.book)}` : ''}${b.price != null ? `, ${oddsText(b.price)}` : ''}`;
+export const fairOdds = (p: number) => (p >= 0.5 ? -Math.round((100 * p) / (1 - p)) : Math.round((100 * (1 - p)) / p));
 // Did the bet win? Spread from the home view: home covers when home margin + spread > 0.
 export function grade(b: Pick<Bet, 'market' | 'side' | 'line'>, hs: number, as: number): 'win' | 'loss' | 'push' {
   const x = b.market === 'total' ? (b.side === 'over' ? hs + as - b.line : b.line - (hs + as))
@@ -47,7 +54,8 @@ export function LineCard({ game, ourMargin, ourTotal, pointWord }: { game: Game;
   const final = game.completed && game.home_score != null;
   // Our number: the one we locked in before the game if there is one; today's ratings only before the game.
   const lockedP = locked[0];
-  const bet = bets.find((b) => b.market === 'spread'), tbet = bets.find((b) => b.market === 'total');
+  const bet = bets.find((b) => b.market === 'spread' && !isPrice(b)), tbet = bets.find((b) => b.market === 'total' && !isPrice(b));
+  const prices = bets.filter(isPrice);
   const m = bet ? bet.our_number : lockedP ? Number(lockedP.margin) : final ? null : ourMargin;
   const t = tbet ? tbet.our_number : lockedP?.home_pts != null ? Number(lockedP.home_pts) + Number(lockedP.away_pts) : final ? null : ourTotal;
   const H = game.home_name, A = game.away_name;
@@ -91,6 +99,9 @@ export function LineCard({ game, ourMargin, ourTotal, pointWord }: { game: Game;
         </p>
       )}
       {bet && bet.reasons?.length > 0 && <div className="reasons">{bet.reasons.map((r) => <span key={r.key} className="chip static">{r.text}</span>)}</div>}
+      {prices.map((p) => (
+        <p key={p.id} className="lc-say"><span className="tier value" style={{ marginRight: 8 }}>Best price</span><b>{priceText(p)}</b>. It pays more than the fair odds of {oddsText(p.cover_prob != null ? fairOdds(p.cover_prob) : null)}, worth about +{p.edge.toFixed(1)}% per bet.{p.result ? <> <b className={p.result === 'win' ? 'W' : p.result === 'loss' ? 'L' : ''}>{p.result === 'win' ? 'Won' : p.result === 'loss' ? 'Lost' : 'Push'}</b>.</> : null}</p>
+      ))}
       {final && res && (
         <p className="lc-say">
           {A} {game.away_score}, {H} {game.home_score}. {edge != null && !close(edge) ? <>{sideName} {sideLine} <b className={res === 'win' ? 'W' : res === 'loss' ? 'L' : ''}>{res === 'win' ? 'covered' : res === 'loss' ? "didn't cover" : 'pushed'}</b>.</> : null}

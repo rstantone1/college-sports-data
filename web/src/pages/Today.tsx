@@ -30,7 +30,7 @@ export function TodayPage() {
   const byId = useMemo(() => new Map((R.data ?? []).map((r) => [r.team_id, r])), [R.data]);
   const L = useMemo(() => league(R.data ?? []), [R.data]);
   const ids = (games.data ?? []).map((g) => g.id);
-  const flagged = useAsync(() => (ids.length ? rest<{ game_id: number }[]>(`bet_picks?kind=eq.live&tier=in.(best,strong)&select=game_id&game_id=in.(${ids.join(',')})`) : Promise.resolve([])), [ids.join(',')]);
+  const flagged = useAsync(() => (ids.length ? rest<{ game_id: number }[]>(`bet_picks?kind=eq.live&tier=in.(best,strong)&stat=is.null&select=game_id&game_id=in.(${ids.join(',')})`) : Promise.resolve([])), [ids.join(',')]);
   const betIds = new Set((flagged.data ?? []).map((b) => b.game_id));
   const shift = (n: number) => { const d = new Date(start); d.setDate(d.getDate() + n); setSp({ d: ymd(d) }, { replace: true }); };
 

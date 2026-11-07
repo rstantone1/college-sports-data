@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { restAll, toBet, type Bet } from '../api';
 import { useAsync, fmtDate, fmtTime } from '../hooks';
 import { Back, Loading, ErrorBox } from '../components/Shell';
-import { betText, TIER, bookLabel, sideNum } from '../components/Lines';
+import { betText, TIER, bookLabel, sideNum, isPrice, oddsText, fairOdds } from '../components/Lines';
 import { SPORTS, sportMeta } from '../sports';
 
 // Units won on one bet of one unit at the posted price (-110 when no price was posted).
@@ -29,7 +29,9 @@ export function BetsPage() {
   const view = useMemo(() => {
     const cur = (b: Bet) => b.season_year === sportMeta(b.sport_id).seasons[0].year;
     const pick = (b: Bet) => sport === 'all' || b.sport_id === sport;
-    const live = (data.data?.live ?? []).filter(pick);
+    const liveAll = (data.data?.live ?? []).filter(pick);
+    const live = liveAll.filter((b) => !isPrice(b));
+    const priced = liveAll.filter(isPrice);
     const replay = (data.data?.replay ?? []).filter(pick);
     const isBest = (b: Bet) => b.tier === 'best' || b.tier === 'strong';
     const now = Date.now();
@@ -41,11 +43,14 @@ export function BetsPage() {
     const season = [...replay.filter(cur), ...live.filter((b) => b.result)].filter(isBest).sort((a, b) => +new Date(b.start_time) - +new Date(a.start_time));
     const allSeason = [...replay.filter(cur), ...live.filter((b) => b.result)];
     const past = replay.filter((b) => !cur(b) && isBest(b));
-    return { upcoming, leans, leanRec, season, allSpread: allSeason.filter((b) => b.market === 'spread'), allTotal: allSeason.filter((b) => b.market === 'total'), past, liveCount: live.filter((b) => b.result && isBest(b)).length };
+    const prices = priced.filter(soon).sort((a, b) => b.edge - a.edge).slice(0, 12);
+    const priceRec = priced.filter((b) => b.result && b.result !== 'void');
+    return { prices, priceRec, upcoming, leans, leanRec, season, allSpread: allSeason.filter((b) => b.market === 'spread'), allTotal: allSeason.filter((b) => b.market === 'total'), past, liveCount: live.filter((b) => b.result && isBest(b)).length };
   }, [data.data, sport]);
 
   if (data.loading) return <Loading />;
   if (data.error) return <ErrorBox msg={data.error} />;
+  const pr = record(view.priceRec);
   const live = record(view.season), past = record(view.past), ats = record(view.allSpread), tot = record(view.allTotal);
   const sportsWithBets = new Set([...(data.data?.live ?? []), ...(data.data?.replay ?? [])].map((b) => b.sport_id));
   const byDay = new Map<string, Bet[]>();
@@ -66,6 +71,7 @@ export function BetsPage() {
         <div className="card"><div className="k">Line moved our way</div><div className="v">{live.clv != null ? `${live.clv >= 0 ? '+' : '\u2212'}${Math.abs(live.clv).toFixed(1)}` : '–'}</div><div className="r">points, on average</div></div>
         <div className="card"><div className="k">Every game, against the spread</div><div className="v">{ats.n ? pctTxt(ats.rate) : '–'}</div><div className="r">{ats.n ? `${ats.w}-${ats.l} this season` : 'no lines yet'}</div></div>
         <div className="card"><div className="k">Every game, totals</div><div className="v">{tot.n ? pctTxt(tot.rate) : '–'}</div><div className="r">{tot.n ? `${tot.w}-${tot.l} this season` : 'no lines yet'}</div></div>
+        <div className="card"><div className="k">Best prices</div><div className="v">{pr.n ? `${uTxt(pr.u)}` : '–'}</div><div className="r">{pr.n ? `units · ${pr.w}-${pr.l}${pr.p ? `-${pr.p}` : ''}` : 'tracking starts today'}</div></div>
       </div>
       <p className="muted sm" style={{ margin: '-8px 0 18px' }}>This season's record includes games played before the site went live, scored with the pick our model would have made before each game, against the real opening line.{view.liveCount ? ` ${view.liveCount} were flagged live.` : ''}{past.n ? ` Same rules on earlier seasons the model never saw: ${past.w}-${past.l} (${pctTxt(past.rate)}).` : ''}</p>
 
@@ -78,6 +84,12 @@ export function BetsPage() {
             <div className="betlist">{list.map((b) => <BetCard key={b.id} b={b} />)}</div>
           </div>
         ))}
+      </section>
+
+      <section className="hsec">
+        <h2>Best prices</h2>
+        <p className="muted sm hsub">A sportsbook paying more than a bet is worth. We take the odds at the sharpest books (the ones pros bet into), remove their cut to get each side's fair chance, then check every other book's number and price against it. These don't need our model to be right, just a book that's slow to move. Our model's view is shown when it has one.</p>
+        {!view.prices.length ? <div className="panel empty">No mispriced lines right now. We check the books every day around noon Central; these come and go quickly.</div> : <div className="betlist">{view.prices.map((b) => <BetCard key={b.id} b={b} />)}</div>}
       </section>
 
       <section className="hsec">
@@ -109,6 +121,7 @@ export function BetsPage() {
         <h2>How this works</h2>
         <div className="panel">
           <p style={{ marginTop: 0 }}>Our number comes from the same ratings as the rest of the site. A game becomes a best bet only when our number and the sportsbooks' line are far enough apart that bets like it won money when we replayed past seasons week by week, using only what was known before each game. Right now that's women's basketball totals; we tested 40-odd other angles (rest, travel, altitude, letdown spots, line moves) across all three sports and nothing else held up, so nothing else is flagged.</p>
+          <p>Best prices are a different idea: no prediction, just a price. When one book pays more on a side than the sharpest books say it's worth, that bet is expected to make money over time even though any single one can lose. That's the most reliable edge in sports betting, and the one professional bettors measure themselves against. We record every one before the game at the book and odds we saw, and grade it at those odds.</p>
           <p>Units assume one unit on each bet at the price posted when we flagged it. "Line moved our way" compares that price with where the line closed: the market agreeing with us after the fact is the best early sign a bet was a good one, win or lose.</p>
           <p className="muted sm" style={{ marginBottom: 0 }}>For information and entertainment. No betting system wins every week. If gambling stops being fun, call 1-800-GAMBLER or visit <a href="https://www.ncpgambling.org/help-treatment/" target="_blank" rel="noreferrer">ncpgambling.org</a>.</p>
         </div>
@@ -132,14 +145,15 @@ function BetCard({ b }: { b: Bet }) {
         {b.market !== 'total' && <img src={(homeSide ? b.home_logo : b.away_logo) ?? ''} alt="" width={36} height={36} />}
         <div>
           <div className="bc-pick">{betText(b, b.home_name, b.away_name)}</div>
-          <div className="muted sm">{b.away_name} {b.neutral_site ? 'vs' : 'at'} {b.home_name}{b.book ? ` · ${bookLabel(b.book)}` : ''}</div>
+          <div className="muted sm">{b.away_name} {b.neutral_site ? 'vs' : 'at'} {b.home_name}{b.book && !isPrice(b) ? ` · ${bookLabel(b.book)}` : ''}</div>
         </div>
       </div>
       <div className="sm" style={{ marginTop: 6 }}>
-        {b.market === 'total' ? <>Our total {b.our_number.toFixed(1)} vs the books' {b.line}</>
+        {isPrice(b) ? <>{bookLabel(b.book)} pays <b>{oddsText(b.price)}</b> · fair odds {b.cover_prob != null ? oddsText(fairOdds(b.cover_prob)) : '–'} · about +{b.edge.toFixed(1)}% per bet</>
+          : b.market === 'total' ? <>Our total {b.our_number.toFixed(1)} vs the books' {b.line}</>
           : <>Our number: {Math.abs(b.our_number) < 0.5 ? 'even' : `${b.our_number > 0 ? b.home_abbr : b.away_abbr} by ${Math.abs(b.our_number).toFixed(1)}`} · books: {b.side === 'home' ? `${b.home_abbr} ${sideNum(b.line)}` : `${b.away_abbr} ${sideNum(-b.line)}`}</>}
       </div>
-      {b.reasons?.length > 0 && <div className="reasons">{b.reasons.slice(0, 4).map((r) => <span key={r.key} className="chip static">{r.text}</span>)}</div>}
+      {b.reasons?.length > 0 && <div className="reasons">{b.reasons.filter((r) => !isPrice(b) || (r.key !== 'price' && r.key !== 'ev')).slice(0, 4).map((r) => <span key={r.key} className="chip static">{r.text}</span>)}</div>}
     </Link>
   );
 }

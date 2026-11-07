@@ -125,6 +125,7 @@ export async function gradeBets(s: SportConfig, season: number) {
     `with done as (
        update bet_picks b set
          close_line = case b.market when 'spread' then g.spread when 'total' then g.total end,
+         close_price = case when b.market='moneyline' then case b.side when 'home' then g.home_ml else g.away_ml end end,
          clv = case
            when b.market='spread' and b.side='home' then b.line - g.spread
            when b.market='spread' and b.side='away' then g.spread - b.line
@@ -134,10 +135,12 @@ export async function gradeBets(s: SportConfig, season: number) {
            when b.market='spread' then case sign((g.home_score - g.away_score + b.line) * case when b.side='home' then 1 else -1 end)
                                          when 1 then 'win' when -1 then 'loss' else 'push' end
            when b.market='total' then case sign((g.home_score + g.away_score - b.line) * case when b.side='over' then 1 else -1 end)
+                                         when 1 then 'win' when -1 then 'loss' else 'push' end
+           when b.market='moneyline' then case sign((g.home_score - g.away_score) * case when b.side='home' then 1 else -1 end)
                                          when 1 then 'win' when -1 then 'loss' else 'push' end end,
          graded_at = now()
        from games g
-       where g.id=b.game_id and b.sport_id=$1 and b.season_year=$2 and b.result is null and b.market in ('spread','total')
+       where g.id=b.game_id and b.sport_id=$1 and b.season_year=$2 and b.result is null and b.market in ('spread','total','moneyline')
          and g.completed and g.home_score is not null
        returning 1)
      select count(*) n from done`, [s.id, season]);

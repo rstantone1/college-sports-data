@@ -46,7 +46,7 @@ export function HomePage() {
     }
     return { s, season, rs, today, yesterday, before, since };
   })), [live.join(',')]);
-  const bets = useAsync(() => rest<any[]>(`v_bets?kind=eq.live&completed=eq.false&tier=in.(best,strong)&start_time=gte.${new Date(Date.now() - 3 * 3600e3).toISOString()}&order=start_time.asc&limit=4`).then((r) => r.map(toBet)), []);
+  const bets = useAsync(() => rest<any[]>(`v_bets?kind=eq.live&completed=eq.false&tier=in.(best,strong)&stat=is.null&start_time=gte.${new Date(Date.now() - 3 * 3600e3).toISOString()}&order=start_time.asc&limit=4`).then((r) => r.map(toBet)), []);
   const record = useAsync(() => rest<{ home_prob: number; games: { home_score: number | null; away_score: number | null; completed: boolean } | null }[]>(`predictions?select=home_prob,games(home_score,away_score,completed)&kind=eq.live&estimated=eq.false`), []);
 
   // Pull tonight's games, last night's results and the week's movers out of every live sport.

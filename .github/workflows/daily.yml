@@ -11,6 +11,10 @@ on:
         description: "Comma-separated sport ids (default: in-season sports)"
         required: false
         default: "mbb,wbb"
+      odds:
+        description: "Pull sportsbook prices now (1) instead of on the usual schedule"
+        required: false
+        default: "0"
 
 concurrency:
   group: daily-${{ github.ref }}
@@ -29,6 +33,7 @@ jobs:
       PG_POOL_MAX: "1"
       CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
       ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+      ODDS_FORCE: ${{ github.event.inputs.odds || '0' }}
       FETCH_DELAY_MS: "350"
       SKIP_ROLLUPS: "1"
     steps:

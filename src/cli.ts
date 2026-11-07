@@ -11,7 +11,7 @@ import { exportEdgePack } from './export/edgePack.js';
 import { exportPlayerPack } from './export/playerPack.js';
 import { flagBets, gradeBets } from './bets.js';
 import { writeProjections } from './props.js';
-import { refreshOddsApi } from './ingest/oddsapi.js';
+import { refreshOddsApi, oddsDue } from './ingest/oddsapi.js';
 import { ingestNcaaGames, ingestNcaaBox } from './ingest/ncaa.js';
 import { ensureSport } from './ingest/teams.js';
 import type { SportConfig } from './sports.js';
@@ -73,9 +73,10 @@ async function main() {
       // Grade finished bets, then flag new ones against the fresh lines.
       if (!isNcaa(s)) {
         // Many-book lines (needs ODDS_API_KEY); only twice a day to stay inside the free plan.
-        if (process.env.ODDS_API_KEY && [2, 20].includes(new Date().getUTCHours())) { try { await refreshOddsApi(s, y); } catch (e) { console.warn('odds api skipped:', (e as Error).message); } }
         try { await gradeBets(s, y); } catch (e) { console.warn('grading skipped:', (e as Error).message); }
         try { await flagBets(s, y, r.rated); } catch (e) { console.warn('bets skipped:', (e as Error).message); }
+        // Best prices after our own picks, so each one can say whether our model agrees.
+        if (process.env.ODDS_API_KEY && (oddsDue(s.id) || process.env.ODDS_FORCE === '1')) { try { await refreshOddsApi(s, y); } catch (e) { console.warn('odds api skipped:', (e as Error).message); } }
         try { await writeProjections(s, y); } catch (e) { console.warn('projections skipped:', (e as Error).message); }
       }
       if (process.env.SKIP_ROLLUPS !== '1') { try { await refreshRollups(); } catch (e) { console.warn('rollup refresh skipped:', (e as Error).message); } }
