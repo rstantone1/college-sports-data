@@ -8,7 +8,7 @@ import type { SportConfig } from './sports.js';
 import { predictMargin, type Rated } from './model/engine.js';
 import { sportModel } from './model/pack.js';
 
-export const BETS_VERSION = 'bets-v1';
+export const BETS_VERSION = 'bets-v2';
 
 // How often our side has covered, by how far our number was from the line, on seasons the model had not seen.
 // Filled from the research runs (scratch/edge, not in the repo); a band with too few games or no edge is left out,
@@ -29,7 +29,9 @@ export const BANDS: Record<string, { spread: Band[]; total: Band[] }> = {
 export const MIN_GAMES = 4;
 // Leans: not a tested edge, just where our number and the books disagree most today, so there's always something
 // graded. Shown separately from best bets, with their own honest record. Thresholds in points.
-export const LEAN: Record<string, { spread: number; total: number }> = { mbb: { spread: 3, total: 4 }, wbb: { spread: 3, total: 3 }, cfb: { spread: 4, total: 5 } };
+// Men's spreads are left out: 3+ points off covered 50.6% over ten seasons, and 43% this season with the line moving
+// against us, so a lean there is a coin flip at best. Men's and football totals leans beat the closing line.
+export const LEAN: Record<string, { spread: number; total: number }> = { mbb: { spread: 99, total: 4 }, wbb: { spread: 3, total: 3 }, cfb: { spread: 4, total: 5 } };
 // How far the line tends to move toward our number per point of disagreement at the open (held-out seasons).
 export const MOVE_PER_PT: Record<string, number> = { mbb: 0.06, wbb: 0.2, cfb: 0.06 };
 export const TIERS = [{ tier: 'best', p: 0.56 }, { tier: 'strong', p: 0.54 }, { tier: 'lean', p: 0.525 }] as const;
