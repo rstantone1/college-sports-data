@@ -7,6 +7,8 @@ import { onColor, distinctPair } from '../hooks';
 import { SPORTS, sportMeta } from '../sports';
 import { GameCard, YourTeams } from './Today';
 import { SinceLastVisit } from '../components/Since';
+import { toBet, type Bet } from '../api';
+import { betText, TIER } from '../components/Lines';
 
 // Rough playing windows, by month. Off-season sports drop to the bottom with their opening month.
 const SEASON_MONTHS: Record<string, number[]> = { mbb: [11, 12, 1, 2, 3, 4], wbb: [11, 12, 1, 2, 3, 4], cfb: [8, 9, 10, 11, 12, 1], bsb: [2, 3, 4, 5, 6], sb: [2, 3, 4, 5, 6] };
@@ -44,6 +46,7 @@ export function HomePage() {
     }
     return { s, season, rs, today, yesterday, before, since };
   })), [live.join(',')]);
+  const bets = useAsync(() => rest<any[]>(`v_bets?kind=eq.live&completed=eq.false&tier=in.(best,strong)&start_time=gte.${new Date(Date.now() - 3 * 3600e3).toISOString()}&order=start_time.asc&limit=4`).then((r) => r.map(toBet)), []);
   const record = useAsync(() => rest<{ home_prob: number; games: { home_score: number | null; away_score: number | null; completed: boolean } | null }[]>(`predictions?select=home_prob,games(home_score,away_score,completed)&kind=eq.live&estimated=eq.false`), []);
 
   // Pull tonight's games, last night's results and the week's movers out of every live sport.
@@ -108,6 +111,7 @@ export function HomePage() {
 
       <SinceLastVisit follows={follows} />
       <YourTeams follows={follows} />
+      {(bets.data?.length ?? 0) > 0 && <BestBets bets={bets.data!} />}
 
       {data.loading ? <Loading rows={6} /> : (
         <>
@@ -267,5 +271,24 @@ function Featured({ f }: { f: { s: string; season: number; g: Game; H: Rating; A
       <div className="fbar"><div style={{ width: `${(1 - pr.aWin) * 100}%`, background: ca }} /><div style={{ width: `${pr.aWin * 100}%`, background: cb }} /></div>
       <div className="fbot">Our pick: <b>{pr.aWin >= 0.5 ? H.short_name : A.short_name}</b> by {Math.max(1, Math.round(Math.abs(pr.margin)))}. Big number is the likely final score.</div>
     </Link>
+  );
+}
+
+// The day's best bets, when there are any. The full list, reasons and record live on the Best bets page.
+function BestBets({ bets }: { bets: Bet[] }) {
+  return (
+    <section className="hsec">
+      <h2>Best bets</h2>
+      <p className="muted sm hsub">Where our number and the sportsbooks disagree most. <Link to="/bets" style={{ color: 'var(--cool)' }}>All bets and our record ›</Link></p>
+      <div className="betlist">
+        {bets.map((b) => (
+          <Link key={b.id} to={`/${b.sport_id}/${b.season_year}/game/${b.game_id}`} className="panel betcard">
+            <div className="bc-top"><span className="pill">{sportMeta(b.sport_id).short}</span><span className="muted sm">{fmtDate(b.start_time, { weekday: 'short' })} {fmtTime(b.start_time)}</span>{b.tier && <span className={TIER[b.tier].cls} style={{ marginLeft: 'auto' }}>{TIER[b.tier].label}</span>}</div>
+            <div className="bc-pick">{betText(b, b.home_name, b.away_name)}</div>
+            <div className="muted sm">{b.away_name} {b.neutral_site ? 'vs' : 'at'} {b.home_name}</div>
+          </Link>
+        ))}
+      </div>
+    </section>
   );
 }

@@ -57,6 +57,7 @@ export function RecordPage() {
         <button className={`chip ${sport === 'all' ? 'on' : ''}`} onClick={() => setSport('all')}>All sports</button>
         {Object.values(SPORTS).map((s) => <button key={s.id} className={`chip ${sport === s.id ? 'on' : ''}`} onClick={() => setSport(s.id)}>{s.short}</button>)}
       </div>
+      <Link to="/bets" className="panel" style={{ display: 'block', marginBottom: 14 }}><b>Against the spread</b> <span className="muted sm">Our best bets, locked before each game and graded after. ›</span></Link>
       {kind === 'replay' && <p className="muted sm">Past seasons: we replayed each season week by week, using only the games already played at that point, and predicted the next week. The system never saw the results. It's how we tested it before using it live.</p>}
       {kind === 'live' && first && <p className="muted sm">Live since {fmtDate(first, { month: 'long', day: 'numeric', year: 'numeric' })}.</p>}
 

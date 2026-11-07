@@ -48,6 +48,7 @@ export function Shell({ children }: { children: ReactNode }) {
           <nav className="nav desk">
             <NavLink end to="/">Home</NavLink>
             <NavLink end to="/scores">Scores</NavLink>
+            <NavLink end to="/bets">Best bets</NavLink>
             {Object.values(SPORTS).map((s) => <NavLink key={s.id} to={`/${s.id}/${s.seasons[0].year}`} className={() => (inSport && sport === s.id ? 'active' : '')}>{s.short}</NavLink>)}
           </nav>
           <div className="desk"><TeamSearch /></div>
@@ -77,6 +78,7 @@ export function Shell({ children }: { children: ReactNode }) {
           )}
           <h4>Also</h4>
           <div className="sheet-list">
+            <Link to="/bets" className="sheet-row">Best bets</Link>
             <Link to="/record" className="sheet-row">How good are our picks?</Link>
             <Link to="/about" className="sheet-row">How the ratings work</Link>
           </div>
@@ -91,6 +93,7 @@ export function Shell({ children }: { children: ReactNode }) {
       <nav className="tabs phone" aria-label="Main">
         <NavLink end to="/" className={onHome ? 'active' : ''}><Icon d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" />Home</NavLink>
         <NavLink end to="/scores" className={onScores ? 'active' : ''}><Icon d="M4 5h16v14H4zM4 9h16M8 3v4M16 3v4" />Scores</NavLink>
+        <NavLink end to="/bets"><Icon d="M4 19 10 13l4 4 6-8M15 9h5v5" />Bets</NavLink>
         <button className={inSport ? 'active' : ''} onClick={() => setSheet(sheet === 'sport' ? null : 'sport')}><Icon d="M12 3a9 9 0 1 0 0 18a9 9 0 0 0 0-18zM3.5 9h17M3.5 15h17M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18" />{inSport ? meta.short.replace("'s hoops", "'s").replace('Football', 'Football') : 'Sports'}</button>
         <button onClick={() => setSheet('search')}><Icon d="M11 4a7 7 0 1 0 0 14a7 7 0 0 0 0-14zM20 20l-4-4" />Search</button>
       </nav>

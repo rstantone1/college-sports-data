@@ -5,6 +5,8 @@ import { useAsync, useCtx, useRatings, distinctPair, fmtDate, fmtTime } from '..
 import { Back, Loading, ErrorBox } from '../components/Shell';
 import { FlowChart, ShotChart } from '../components/Charts';
 import { predict, league, pct } from '../model';
+import { LineCard } from '../components/Lines';
+import { Projections } from '../components/Projections';
 
 interface Play { sequence: number; period: number; clock: string; team_id: number | null; play_type: string; description: string; scoring_play: boolean; score_value: number; home_score: number; away_score: number; x: number | null; y: number | null; }
 interface PLine { player_id: number; stat_group: string | null; team_id: number; starter: boolean; did_not_play: boolean; stats: Record<string, number>; players: { display_name: string } }
@@ -174,6 +176,9 @@ export function GamePage() {
           </>
         )}
       </div>
+
+      <LineCard game={game} ourMargin={pred ? pred.margin : null} ourTotal={pred ? pred.aPts + pred.bPts : null} pointWord={meta.pointWord} />
+      {meta.hoops && <Projections game={game} base={base} />}
 
       {meta.hoops && <div className="panel" style={{ marginBottom: 16 }}>
         <h3>How the game unfolded</h3>

@@ -104,14 +104,15 @@ export async function ingestBoxScore(s: SportConfig, gameRow: { id: number; espn
     if (t) teamIds.set(String(c.team?.id ?? c.id), t.id);
   }
 
-  // Game-level details that only the summary has.
+  // Game-level details that only the summary has. Lines from the summary only fill a gap: the lines job keeps
+  // games.spread/total as the median of every book, which is better than the one book the summary lists.
   const gi = sum?.gameInfo;
   const odds = parseOdds(sum);
   await q(
     `update games set venue_name=coalesce($2, venue_name), venue_city=coalesce($3, venue_city), venue_state=coalesce($4, venue_state),
        attendance=coalesce($5, attendance), periods=coalesce($6, periods), season_type=coalesce($7, season_type),
        neutral_site=coalesce($8, neutral_site), conference_game=coalesce($9, conference_game),
-       odds=coalesce($10, odds), spread=coalesce($11, spread), total=coalesce($12, total), odds_provider=coalesce($13, odds_provider) where id=$1`,
+       odds=coalesce($10, odds), spread=coalesce(spread, $11), total=coalesce(total, $12), odds_provider=coalesce(odds_provider, $13) where id=$1`,
     [gameRow.id, gi?.venue?.fullName ?? null, gi?.venue?.address?.city ?? null, gi?.venue?.address?.state ?? null,
      gi?.attendance ?? comp?.attendance ?? null,
      competitors[0]?.linescores?.length ?? null, sum?.header?.season?.type ?? null,

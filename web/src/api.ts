@@ -58,7 +58,22 @@ export interface Game {
   home_team_id: number; away_team_id: number; home_score: number | null; away_score: number | null; notes: string | null;
   home_name: string; home_abbr: string; home_color: string | null; home_logo: string | null;
   away_name: string; away_abbr: string; away_color: string | null; away_logo: string | null;
+  // Market line (median of sportsbooks; spread from the home team's view, negative = home favored).
+  spread?: number | string | null; total?: number | string | null; spread_open?: number | string | null; total_open?: number | string | null;
+  home_ml?: number | null; away_ml?: number | null; line_books?: number | null;
 }
+
+// A bet we flagged: written before the game, graded after.
+export interface Bet {
+  id: number; sport_id: string; season_year: number; game_id: number; kind: 'live' | 'replay'; market: 'spread' | 'total' | 'moneyline' | 'prop';
+  side: 'home' | 'away' | 'over' | 'under'; line: number; price: number | null; book: string | null; our_number: number; edge: number;
+  cover_prob: number | null; tier: 'best' | 'strong' | 'lean' | null; reasons: { key: string; text: string }[]; made_at: string;
+  close_line: number | null; clv: number | null; result: 'win' | 'loss' | 'push' | 'void' | null; graded_at: string | null;
+  start_time: string; completed: boolean; status: string; home_score: number | null; away_score: number | null; neutral_site: boolean;
+  home_name: string; home_abbr: string; home_logo: string | null; away_name: string; away_abbr: string; away_logo: string | null;
+}
+export const toBet = (b: any): Bet => ({ ...b, line: Number(b.line), our_number: Number(b.our_number), edge: Number(b.edge),
+  cover_prob: b.cover_prob == null ? null : Number(b.cover_prob), close_line: b.close_line == null ? null : Number(b.close_line), clv: b.clv == null ? null : Number(b.clv) });
 
 export const num = (v: any) => (v == null ? NaN : Number(v));
 

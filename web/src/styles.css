@@ -329,3 +329,31 @@ button.sheet-row{border:0;font:inherit;font-weight:600;font-size:17px;color:var(
 .since-row img{object-fit:contain;margin-top:2px}
 .since-row:hover{background:var(--soft)}
 .trend{display:flex;align-items:center;gap:10px;margin-top:10px;padding-top:8px;border-top:1px solid var(--rule)}
+
+/* Betting line card, best bets */
+.linecard .lc-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.linecard .lc-head h3{margin:0}
+.lc-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.lc-grid > div{background:var(--soft);border-radius:10px;padding:10px 12px}
+.lc-grid .k{font-size:13px;color:var(--muted);font-weight:700}
+.lc-grid .v{font-family:var(--display);font-weight:800;font-size:26px;line-height:1.15}
+.lc-grid .r{font-size:14px;font-weight:600}
+.lc-say{margin:12px 0 0;font-size:17px;line-height:1.5}
+.reasons{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.chip.static{cursor:default;font-size:13px;background:var(--soft)}
+.tier{display:inline-block;font-size:12px;font-weight:800;padding:3px 9px;border-radius:999px;letter-spacing:.01em}
+.tier.best{background:var(--win);color:#fff}
+.tier.strong{background:var(--win-soft);color:var(--win)}
+.tier.lean{background:var(--soft);color:var(--muted)}
+.dayline{font-size:15px;color:var(--muted);margin:0 0 8px;text-transform:uppercase;letter-spacing:.04em}
+.betlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}
+.betcard{display:block;padding:14px}
+.betcard:hover{border-color:var(--ink)}
+.bc-top{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.bc-main{display:flex;align-items:center;gap:10px}
+.bc-main img{object-fit:contain;flex:0 0 auto}
+.bc-pick{font-family:var(--display);font-weight:800;font-size:24px;line-height:1.15}
+.betresults{list-style:none;margin:0;padding:0}
+.betresults li a{display:grid;grid-template-columns:56px 1fr auto;gap:10px;align-items:baseline;padding:12px 14px;border-bottom:1px solid var(--rule)}
+.betresults li:last-child a{border-bottom:0}
+@media (max-width:520px){ .lc-grid .v{font-size:22px} .bc-pick{font-size:21px} .betlist{grid-template-columns:1fr} }

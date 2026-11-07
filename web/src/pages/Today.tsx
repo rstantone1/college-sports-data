@@ -7,6 +7,7 @@ import { TeamPicker } from '../components/TeamPicker';
 import { Spark } from '../components/Charts';
 import { predict, league, pct, outsider, perGame, sign, type League } from '../model';
 import { sportMeta } from '../sports';
+import { lineText, num } from '../components/Lines';
 
 const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const isToday = (d: string) => d === ymd(new Date());
@@ -28,6 +29,9 @@ export function TodayPage() {
 
   const byId = useMemo(() => new Map((R.data ?? []).map((r) => [r.team_id, r])), [R.data]);
   const L = useMemo(() => league(R.data ?? []), [R.data]);
+  const ids = (games.data ?? []).map((g) => g.id);
+  const flagged = useAsync(() => (ids.length ? rest<{ game_id: number }[]>(`bet_picks?kind=eq.live&tier=in.(best,strong)&select=game_id&game_id=in.(${ids.join(',')})`) : Promise.resolve([])), [ids.join(',')]);
+  const betIds = new Set((flagged.data ?? []).map((b) => b.game_id));
   const shift = (n: number) => { const d = new Date(start); d.setDate(d.getDate() + n); setSp({ d: ymd(d) }, { replace: true }); };
 
   if (R.loading) return <Loading />;
@@ -50,7 +54,7 @@ export function TodayPage() {
     return { g, H, A, est, pr, final, homeWon, watch };
   });
   const watchList = [...rows].filter((r) => r.watch > 0).sort((a, b) => b.watch - a.watch).slice(0, 4);
-  const card = (r: typeof rows[number]) => <GameCard key={r.g.id} {...r} base={base} />;
+  const card = (r: typeof rows[number]) => <GameCard key={r.g.id} {...r} base={base} bet={betIds.has(r.g.id)} />;
 
   return (
     <>
@@ -86,7 +90,7 @@ export function TodayPage() {
   );
 }
 
-export function GameCard({ g, H, A, est, pr, final, homeWon, base }: { g: Game; H?: Rating; A?: Rating; est: boolean; pr: ReturnType<typeof predict> | null; final: boolean; homeWon: boolean; base: string }) {
+export function GameCard({ g, H, A, est, pr, final, homeWon, base, bet }: { g: Game; H?: Rating; A?: Rating; est: boolean; pr: ReturnType<typeof predict> | null; final: boolean; homeWon: boolean; base: string; bet?: boolean }) {
   const line = (side: 'away' | 'home') => {
     const isHome = side === 'home';
     const name = isHome ? g.home_name : g.away_name, logo = isHome ? g.home_logo : g.away_logo;
@@ -109,7 +113,7 @@ export function GameCard({ g, H, A, est, pr, final, homeWon, base }: { g: Game; 
       {line('away')}{line('home')}
       <div className="gfoot">
         <span>{final ? 'Final' : fmtTime(g.start_time)}{g.neutral_site ? ' · Neutral' : ''}</span>
-        {upset ? <span className="pill loss">Upset</span> : pr && !final ? <span>{est ? 'Heavy favorite' : <>Pick: {(pr.aWin >= .5 ? g.home_abbr : g.away_abbr)} by {Math.max(1, Math.round(Math.abs(pr.margin)))}</>}</span> : null}
+        {upset ? <span className="pill loss">Upset</span> : pr && !final ? <span>{bet && <span className="tier best" style={{ marginRight: 6 }}>Best bet</span>}{est ? 'Heavy favorite' : <>Pick: {(pr.aWin >= .5 ? g.home_abbr : g.away_abbr)} by {Math.max(1, Math.round(Math.abs(pr.margin)))}</>}{num(g.spread) != null && <span className="muted"> · Line {lineText(num(g.spread), g.home_abbr, g.away_abbr)}</span>}</span> : null}
       </div>
     </Link>
   );

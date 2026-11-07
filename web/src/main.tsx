@@ -20,6 +20,7 @@ import { TournamentPage } from './pages/Tournament';
 import { TransfersPage } from './pages/Transfers';
 import { LeadersPage } from './pages/Leaders';
 import { PlayerPage } from './pages/Player';
+import { BetsPage } from './pages/Bets';
 
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
@@ -27,6 +28,7 @@ createRoot(document.getElementById('root')!).render(
       <Routes>
         <Route path="/" element={<Shell><HomePage /></Shell>} />
         <Route path="/record" element={<Shell><RecordPage /></Shell>} />
+        <Route path="/bets" element={<Shell><BetsPage /></Shell>} />
         <Route path="/school/:espnId" element={<Shell><SchoolPage /></Shell>} />
         <Route path="/about" element={<Shell><AboutPage /></Shell>} />
         <Route path="/scores" element={<Shell><AllScoresPage /></Shell>} />
