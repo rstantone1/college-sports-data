@@ -26,6 +26,7 @@ export const BANDS: Record<string, { spread: Band[]; total: Band[] }> = {
   // Football: nothing held up on 2022-26 (spreads or totals), so nothing is flagged.
   cfb: { spread: [], total: [] },
 };
+export const MIN_GAMES = 4;
 export const TIERS = [{ tier: 'best', p: 0.56 }, { tier: 'strong', p: 0.54 }, { tier: 'lean', p: 0.525 }] as const;
 const tierFor = (p: number) => TIERS.find((t) => p >= t.p)?.tier ?? null;
 
@@ -62,6 +63,9 @@ export async function flagBets(s: SportConfig, season: number, rated: Rated) {
   for (const g of games) {
     const H = rated.ratings.get(Number(g.h)), A = rated.ratings.get(Number(g.a));
     if (!H || !A) continue;
+    // In the first couple of weeks the ratings rest mostly on last season; the tested edge is weakest there
+    // (women's totals 57% in weeks 0-2 vs 62% after), so a game only becomes a best bet once both teams have played.
+    const warm = H.games >= MIN_GAMES && A.games >= MIN_GAMES;
     const { margin, units } = predictMargin(m, rated, H, A, g.n);
     const add = m.unit === 'inning' || m.unit === 'minute';
     const total = ((add ? H.o + A.d - rated.L + A.o + H.d - rated.L : (H.o * A.d + A.o * H.d) / rated.L) * units) / m.scale;
@@ -86,7 +90,7 @@ export async function flagBets(s: SportConfig, season: number, rated: Rated) {
     const place = async (market: 'spread' | 'total', side: string, line: number, our: number, edge: number, bandsFor: Band[], reasons: { key: string; text: string }[]) => {
       const b = bandsFor.find((x) => Math.abs(edge) >= x.lo && Math.abs(edge) < x.hi);
       if (!b) return;
-      const tier = tierFor(b.p);
+      const tier = warm ? tierFor(b.p) : 'lean';
       if (!tier) return;
       const ins = await q(
         `insert into bet_picks(sport_id, season_year, game_id, kind, market, side, line, price, book, our_number, edge, cover_prob, tier, reasons, model_version)
@@ -142,7 +146,9 @@ export async function replayBets(s: SportConfig, season: number) {
   const bands = BANDS[s.id] ?? { spread: [], total: [] };
   const rows = await q<any>(
     `select g.id, g.home_score hs, g.away_score "as", g.start_time, g.spread, g.total, g.spread_open, g.total_open,
-            p.margin, p.home_pts, p.away_pts
+            p.margin, p.home_pts, p.away_pts,
+            (select count(*) from games x where x.sport_id=$1 and x.season_year=$2 and x.completed and x.start_time < g.start_time and (x.home_team_id=g.home_team_id or x.away_team_id=g.home_team_id)) hg,
+            (select count(*) from games x where x.sport_id=$1 and x.season_year=$2 and x.completed and x.start_time < g.start_time and (x.home_team_id=g.away_team_id or x.away_team_id=g.away_team_id)) ag
      from games g
      join lateral (select * from predictions p where p.game_id=g.id and p.kind in ('replay','live') and not p.estimated
                    order by (p.kind='replay') desc limit 1) p on true
@@ -153,13 +159,14 @@ export async function replayBets(s: SportConfig, season: number) {
     const hs = Number(r.hs), as = Number(r.as), m = Number(r.margin);
     const total = r.home_pts != null && r.away_pts != null ? Number(r.home_pts) + Number(r.away_pts) : null;
     const made = new Date(new Date(r.start_time).getTime() - 2 * 3600e3).toISOString();
+    const warm = Number(r.hg) >= MIN_GAMES && Number(r.ag) >= MIN_GAMES;
     if (r.spread != null || r.spread_open != null) {
       const useOpen = r.spread_open != null, line = Number(useOpen ? r.spread_open : r.spread), close = r.spread == null ? null : Number(r.spread);
       const edge = m + line, side = edge > 0 ? 1 : -1;
       if (Math.abs(edge) >= 0.5) {
         const x = side * (hs - as + line);
         const b = bandOf(bands.spread, Math.abs(edge));
-        out.push({ market: 'spread', side: side > 0 ? 'home' : 'away', line, our: m, edge: Math.abs(edge), p: b?.p ?? null, tier: b ? tierFor(b.p) : null,
+        out.push({ market: 'spread', side: side > 0 ? 'home' : 'away', line, our: m, edge: Math.abs(edge), p: b?.p ?? null, tier: b ? (warm ? tierFor(b.p) : 'lean') : null,
           close, clv: useOpen && close != null ? (side > 0 ? line - close : close - line) : null, result: x > 0 ? 'win' : x < 0 ? 'loss' : 'push', id: r.id, made,
           reasons: [{ key: 'edge', text: `We were ${Math.abs(edge).toFixed(1)} pts off the line` }] });
       }
@@ -170,7 +177,7 @@ export async function replayBets(s: SportConfig, season: number) {
       if (Math.abs(edge) >= 0.5) {
         const x = side * (hs + as - line);
         const b = bandOf(bands.total, Math.abs(edge));
-        out.push({ market: 'total', side: side > 0 ? 'over' : 'under', line, our: total, edge: Math.abs(edge), p: b?.p ?? null, tier: b ? tierFor(b.p) : null,
+        out.push({ market: 'total', side: side > 0 ? 'over' : 'under', line, our: total, edge: Math.abs(edge), p: b?.p ?? null, tier: b ? (warm ? tierFor(b.p) : 'lean') : null,
           close, clv: useOpen && close != null ? (side > 0 ? close - line : line - close) : null, result: x > 0 ? 'win' : x < 0 ? 'loss' : 'push', id: r.id, made,
           reasons: [{ key: 'edge', text: `Our total was ${Math.abs(edge).toFixed(1)} ${side > 0 ? 'above' : 'below'} the line` }] });
       }

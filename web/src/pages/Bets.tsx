@@ -23,22 +23,27 @@ export function BetsPage() {
   const [sport, setSport] = useState('all');
   const data = useAsync(() => Promise.all([
     restAll<any>(`v_bets?kind=eq.live&order=start_time.asc`),
-    restAll<any>(`v_bets?kind=eq.replay&result=not.is.null&select=sport_id,season_year,market,tier,result,price,clv,start_time&order=start_time.asc`),
-  ]).then(([live, rep]) => ({ live: live.map(toBet), replay: rep.map((b: any) => ({ ...b, clv: b.clv == null ? null : Number(b.clv) })) as Bet[] })), []);
+    restAll<any>(`v_bets?kind=eq.replay&result=not.is.null&order=start_time.asc`),
+  ]).then(([live, rep]) => ({ live: live.map(toBet), replay: rep.map(toBet) })), []);
 
   const view = useMemo(() => {
-    const live = (data.data?.live ?? []).filter((b) => sport === 'all' || b.sport_id === sport);
-    const replay = (data.data?.replay ?? []).filter((b) => sport === 'all' || b.sport_id === sport);
+    const cur = (b: Bet) => b.season_year === sportMeta(b.sport_id).seasons[0].year;
+    const pick = (b: Bet) => sport === 'all' || b.sport_id === sport;
+    const live = (data.data?.live ?? []).filter(pick);
+    const replay = (data.data?.replay ?? []).filter(pick);
+    const isBest = (b: Bet) => b.tier === 'best' || b.tier === 'strong';
     const now = Date.now();
-    const upcoming = live.filter((b) => !b.completed && new Date(b.start_time).getTime() > now - 3 * 3600e3 && b.tier !== 'lean');
-    const graded = live.filter((b) => b.result).sort((a, b) => +new Date(b.start_time) - +new Date(a.start_time));
-    const called = graded.filter((b) => b.tier !== 'lean');
-    return { upcoming, graded, called, replay: replay.filter((b) => b.tier !== 'lean') };
+    const upcoming = live.filter((b) => !b.completed && new Date(b.start_time).getTime() > now - 3 * 3600e3 && isBest(b));
+    // This season's best bets: replayed picks (what we'd have flagged, graded against the real line) plus live ones.
+    const season = [...replay.filter(cur), ...live.filter((b) => b.result)].filter(isBest).sort((a, b) => +new Date(b.start_time) - +new Date(a.start_time));
+    const allSeason = [...replay.filter(cur), ...live.filter((b) => b.result)];
+    const past = replay.filter((b) => !cur(b) && isBest(b));
+    return { upcoming, season, allSpread: allSeason.filter((b) => b.market === 'spread'), allTotal: allSeason.filter((b) => b.market === 'total'), past, liveCount: live.filter((b) => b.result && isBest(b)).length };
   }, [data.data, sport]);
 
   if (data.loading) return <Loading />;
   if (data.error) return <ErrorBox msg={data.error} />;
-  const live = record(view.called), past = record(view.replay);
+  const live = record(view.season), past = record(view.past), ats = record(view.allSpread), tot = record(view.allTotal);
   const sportsWithBets = new Set([...(data.data?.live ?? []), ...(data.data?.replay ?? [])].map((b) => b.sport_id));
   const byDay = new Map<string, Bet[]>();
   for (const b of view.upcoming) { const d = fmtDate(b.start_time, { weekday: 'long', month: 'short', day: 'numeric' }); byDay.set(d, [...(byDay.get(d) ?? []), b]); }
@@ -54,11 +59,12 @@ export function BetsPage() {
       </div>
 
       <div className="cards" style={{ marginBottom: 18 }}>
-        <div className="card"><div className="k">This season</div><div className="v">{live.n ? `${live.w}-${live.l}${live.p ? `-${live.p}` : ''}` : '0-0'}</div><div className="r">{live.n ? pctTxt(live.rate) : 'no results yet'}</div></div>
-        <div className="card"><div className="k">Units</div><div className="v" style={{ color: live.u > 0 ? 'var(--win)' : live.u < 0 ? 'var(--hot)' : undefined }}>{live.n ? uTxt(live.u) : '–'}</div><div className="r">one unit per bet</div></div>
-        <div className="card"><div className="k">Line moved our way</div><div className="v">{live.clv != null ? `${live.clv >= 0 ? '+' : '−'}${Math.abs(live.clv).toFixed(1)}` : '–'}</div><div className="r">points, on average</div></div>
-        <div className="card"><div className="k">Same rules, past seasons</div><div className="v">{past.n ? pctTxt(past.rate) : '–'}</div><div className="r">{past.n ? `${past.w}-${past.l} replayed` : 'not run yet'}</div></div>
+        <div className="card"><div className="k">Best bets this season</div><div className="v">{live.n ? `${live.w}-${live.l}${live.p ? `-${live.p}` : ''}` : '0-0'}</div><div className="r">{live.n ? `${pctTxt(live.rate)} · ${uTxt(live.u)} units` : 'none yet'}</div></div>
+        <div className="card"><div className="k">Line moved our way</div><div className="v">{live.clv != null ? `${live.clv >= 0 ? '+' : '\u2212'}${Math.abs(live.clv).toFixed(1)}` : '–'}</div><div className="r">points, on average</div></div>
+        <div className="card"><div className="k">Every game, against the spread</div><div className="v">{ats.n ? pctTxt(ats.rate) : '–'}</div><div className="r">{ats.n ? `${ats.w}-${ats.l} this season` : 'no lines yet'}</div></div>
+        <div className="card"><div className="k">Every game, totals</div><div className="v">{tot.n ? pctTxt(tot.rate) : '–'}</div><div className="r">{tot.n ? `${tot.w}-${tot.l} this season` : 'no lines yet'}</div></div>
       </div>
+      <p className="muted sm" style={{ margin: '-8px 0 18px' }}>This season's record includes games played before the site went live, scored with the pick our model would have made before each game, against the real opening line.{view.liveCount ? ` ${view.liveCount} were flagged live.` : ''}{past.n ? ` Same rules on earlier seasons the model never saw: ${past.w}-${past.l} (${pctTxt(past.rate)}).` : ''}</p>
 
       <section className="hsec">
         <h2>Coming up</h2>
@@ -71,16 +77,16 @@ export function BetsPage() {
         ))}
       </section>
 
-      {view.graded.length > 0 && (
+      {view.season.length > 0 && (
         <section className="hsec">
           <h2>Recent results</h2>
           <div className="panel" style={{ padding: 0 }}>
             <ul className="betresults">
-              {view.graded.slice(0, 30).map((b) => (
+              {view.season.slice(0, 30).map((b) => (
                 <li key={b.id}>
                   <Link to={`/${b.sport_id}/${b.season_year}/game/${b.game_id}`}>
                     <b className={b.result === 'win' ? 'W' : b.result === 'loss' ? 'L' : 'muted'}>{b.result === 'win' ? 'Won' : b.result === 'loss' ? 'Lost' : 'Push'}</b>
-                    <span>{betText(b, b.home_name, b.away_name)} <span className="muted sm">{b.away_abbr} {b.away_score}, {b.home_abbr} {b.home_score}{b.tier === 'lean' ? ' · lean' : ''}</span></span>
+                    <span>{betText(b, b.home_name, b.away_name)} <span className="muted sm">{b.away_abbr} {b.away_score}, {b.home_abbr} {b.home_score}{b.kind === 'replay' ? ' · replayed' : ''}</span></span>
                     <span className="muted sm">{fmtDate(b.start_time)}</span>
                   </Link>
                 </li>
@@ -93,7 +99,7 @@ export function BetsPage() {
       <section className="hsec" id="how">
         <h2>How this works</h2>
         <div className="panel">
-          <p style={{ marginTop: 0 }}>Our number comes from the same ratings as the rest of the site. A game becomes a bet only when our number and the sportsbooks' line are far enough apart, and the extra factors we've tested (rest, travel, altitude and others) agree. The tier is how often bets like it won when we replayed past seasons week by week, using only what was known before each game.</p>
+          <p style={{ marginTop: 0 }}>Our number comes from the same ratings as the rest of the site. A game becomes a best bet only when our number and the sportsbooks' line are far enough apart that bets like it won money when we replayed past seasons week by week, using only what was known before each game. Right now that's women's basketball totals; we tested 40-odd other angles (rest, travel, altitude, letdown spots, line moves) across all three sports and nothing else held up, so nothing else is flagged.</p>
           <p>Units assume one unit on each bet at the price posted when we flagged it. "Line moved our way" compares that price with where the line closed: the market agreeing with us after the fact is the best early sign a bet was a good one, win or lose.</p>
           <p className="muted sm" style={{ marginBottom: 0 }}>For information and entertainment. No betting system wins every week. If gambling stops being fun, call 1-800-GAMBLER or visit <a href="https://www.ncpgambling.org/help-treatment/" target="_blank" rel="noreferrer">ncpgambling.org</a>.</p>
         </div>
