@@ -1,0 +1,45 @@
+name: Betting lines backfill
+
+# Manual: load every finished game's lines for the chosen seasons from ESPN's odds feed (plus CollegeFootballData
+# for football), clean them against the market, save each game's line, and keep a per-book research file.
+on:
+  workflow_dispatch:
+    inputs:
+      sport:
+        description: "Sport id (mbb, wbb, cfb)"
+        required: true
+        default: "mbb"
+      seasons:
+        description: 'Seasons as a JSON list, e.g. [2024,2025,2026]'
+        required: true
+        default: "[2024,2025,2026]"
+
+jobs:
+  lines:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        season: ${{ fromJSON(inputs.seasons) }}
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+      PG_POOL_MAX: "1"
+      LINES_DELAY_MS: "110"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsx src/cli.ts migrate
+      - run: npx tsx src/cli.ts lines:backfill --sport=${{ inputs.sport }} --season=${{ matrix.season }} --out=out/lines-${{ inputs.sport }}-${{ matrix.season }}.json.gz
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lines-${{ inputs.sport }}-${{ matrix.season }}
+          path: out/
+          retention-days: 30

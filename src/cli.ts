@@ -6,6 +6,7 @@ import { ingestBoxScores, ingestOdds } from './ingest/boxscores.js';
 import { ingestRosters } from './ingest/rosters.js';
 import { computeRatings, saveRatings, saveImpacts } from './ratings/efficiency.js';
 import { writePredictions } from './predictions.js';
+import { backfillLines, refreshLines } from './ingest/lines.js';
 import { ingestNcaaGames, ingestNcaaBox } from './ingest/ncaa.js';
 import { ensureSport } from './ingest/teams.js';
 import type { SportConfig } from './sports.js';
@@ -34,6 +35,9 @@ async function main() {
     case 'ingest:odds': { const s = sport(args.sport); await ingestOdds(s, season(s.id), { limit: args.limit ? Number(args.limit) : undefined }); break; }
     case 'ingest:independents': { const s = sport(args.sport); await addIndependents(s, season(s.id)); break; }
     case 'ingest:rosters': { const s = sport(args.sport); await ingestRosters(s, season(s.id)); break; }
+    // Betting lines: a whole season (finished games, cleaned against the market) or just the next few days.
+    case 'lines:backfill': { const s = sport(args.sport); await backfillLines(s, season(s.id), { out: args.out, workers: args.workers ? Number(args.workers) : undefined }); break; }
+    case 'lines:refresh': { const s = sport(args.sport); await refreshLines(s, season(s.id)); break; }
 
     // Full daily refresh for one sport: schedule/scores, new box scores, ratings.
     case 'daily': {
@@ -54,6 +58,8 @@ async function main() {
       await saveImpacts(s, y, r.impacts);
       // Picks for the next few days, written once and never changed.
       try { await writePredictions(s, y, r.rated, asOf); } catch (e) { console.warn('predictions skipped:', (e as Error).message); }
+      // Current betting lines for the next few days (ESPN sports only), saved per book with every change logged.
+      if (!isNcaa(s)) { try { await refreshLines(s, y); } catch (e) { console.warn('lines skipped:', (e as Error).message); } }
       if (process.env.SKIP_ROLLUPS !== '1') { try { await refreshRollups(); } catch (e) { console.warn('rollup refresh skipped:', (e as Error).message); } }
       console.log(`${s.id} ${y}: ratings saved for ${r.ratings.length} teams (${r.games} games, ${r.skipped} skipped, HCA ${r.hca.toFixed(2)}, league ${r.leagueAvg.toFixed(1)})`);
       break;
