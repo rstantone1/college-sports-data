@@ -16,10 +16,11 @@ export const BETS_VERSION = 'bets-v1';
 type Band = { lo: number; hi: number; p: number; n: number };
 export const BANDS: Record<string, { spread: Band[]; total: Band[] }> = {
   mbb: { spread: [], total: [] },
-  // Women's: trained 2022-24, held out 2025-27; 4+ points off the opener won in each held-out season, with the line
-  // moving toward us after the open (+1.4 to +3.7 points on average).
+  // Women's: trained 2022-24, held out 2025-27. Totals 4+ points off the opener held up in every held-out season
+  // and in two independent replays (62% at 4-6, 67% at 6+), with the line moving toward us after the open.
+  // Spreads 4+ covered 58% in one replay but only 50% in another, so they're leans: shown as picks, never best bets.
   wbb: {
-    spread: [{ lo: 4, hi: 99, p: 0.556, n: 348 }],
+    spread: [{ lo: 4, hi: 99, p: 0.525, n: 348 }],
     total: [{ lo: 4, hi: 6, p: 0.548, n: 284 }, { lo: 6, hi: 99, p: 0.59, n: 219 }],
   },
   // Football: nothing held up on 2022-26 (spreads or totals), so nothing is flagged.

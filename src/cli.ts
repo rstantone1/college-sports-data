@@ -126,7 +126,8 @@ async function main() {
       const { paramsFor } = await import('./model/params.js');
       const { normCdf } = await import('./model/engine.js');
       const { RESULT_SD } = await import('./predictions.js');
-      const seasons = [await loadSeason(s, y - 1), await loadSeason(s, y)];
+      // Three earlier seasons warm the prior the same way the research backtest does, so replayed picks match it.
+      const seasons = [await loadSeason(s, y - 3), await loadSeason(s, y - 2), await loadSeason(s, y - 1), await loadSeason(s, y)];
       const res = walkForward(sportModel(s), seasons.filter((x) => x.games.length), paramsFor(s.id));
       const preds = res.find((r) => r.season === y)?.preds ?? [];
       const sd = RESULT_SD[s.id] ?? 10;
