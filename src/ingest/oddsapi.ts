@@ -149,7 +149,9 @@ export async function refreshOddsApi(s: SportConfig, season: number) {
 export function valueBets(per: Row[], sd: { spread: number; total: number }): Cand[] {
   const out: Cand[] = [];
   const pick = (ok: (r: Row) => boolean) => { const all = per.filter(ok); const sh = all.filter((r) => r.sharp); return { ref: sh.length ? 'sharp' as const : 'median' as const, rs: sh.length ? sh : all, n: all.length }; };
-  const minEv = (ref: string) => (ref === 'sharp' ? MIN_EV_SHARP : MIN_EV_MEDIAN);
+  // Pinnacle is the sharpest by a distance; without it (most women's games) the bar sits halfway to the median's.
+  const hasPin = per.some((r) => r.key === 'pinnacle');
+  const minEv = (ref: string) => (ref === 'sharp' ? (hasPin ? MIN_EV_SHARP : (MIN_EV_SHARP + MIN_EV_MEDIAN) / 2) : MIN_EV_MEDIAN);
   const newest = Math.max(0, ...per.filter((r) => r.sharp).map((r) => r.upd));
   const usable = (r: Row) => !r.sharp && US_BOOKS.has(r.key) && (!newest || !r.upd || newest - r.upd < STALE_MS);
   // Spreads: each reference book implies a fair expected margin; average them, then price every book's number.

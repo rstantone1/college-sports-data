@@ -36,7 +36,7 @@ export function grade(b: Pick<Bet, 'market' | 'side' | 'line'>, hs: number, as: 
 }
 
 interface BookRow { book: string; spread: number | null; total: number | null; home_ml: number | null; away_ml: number | null }
-const BOOK_NAMES: Record<string, string> = { draftkings: 'DraftKings', 'espn bet': 'ESPN BET', fanduel: 'FanDuel', betmgm: 'BetMGM', caesars: 'Caesars', bovada: 'Bovada', bet365: 'bet365', fanatics: 'Fanatics', 'hard rock': 'Hard Rock', betfair: 'Betfair' };
+const BOOK_NAMES: Record<string, string> = { draftkings: 'DraftKings', 'espn bet': 'ESPN BET', fanduel: 'FanDuel', betmgm: 'BetMGM', caesars: 'Caesars', bovada: 'Bovada', bet365: 'bet365', fanatics: 'Fanatics', 'hard rock': 'Hard Rock', betfair: 'Betfair', betrivers: 'BetRivers', betus: 'BetUS', 'mybookie.ag': 'MyBookie', 'betonline.ag': 'BetOnline', 'lowvig.ag': 'LowVig', 'william hill': 'Caesars', 'bally bet': 'Bally Bet', betparx: 'betPARX', 'wind creek': 'Wind Creek', betanysports: 'BetAnySports', fliff: 'Fliff', superbook: 'SuperBook' };
 export const bookLabel = (b: string | null) => (b ? BOOK_NAMES[b] ?? b.replace(/\b\w/g, (c) => c.toUpperCase()) : '');
 
 // The betting line next to our number, on a game's page. Before the game: where we stand against the books and

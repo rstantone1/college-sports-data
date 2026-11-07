@@ -43,7 +43,9 @@ export function BetsPage() {
     const season = [...replay.filter(cur), ...live.filter((b) => b.result)].filter(isBest).sort((a, b) => +new Date(b.start_time) - +new Date(a.start_time));
     const allSeason = [...replay.filter(cur), ...live.filter((b) => b.result)];
     const past = replay.filter((b) => !cur(b) && isBest(b));
-    const prices = priced.filter(soon).sort((a, b) => b.edge - a.edge).slice(0, 12);
+    // Prices our model agrees with first, then by expected return.
+    const agree = (b: Bet) => (b.reasons?.some((r) => r.key === 'model' && /too/.test(r.text)) ? 1 : 0);
+    const prices = priced.filter(soon).sort((a, b) => agree(b) - agree(a) || b.edge - a.edge).slice(0, 12);
     const priceRec = priced.filter((b) => b.result && b.result !== 'void');
     return { prices, priceRec, upcoming, leans, leanRec, season, allSpread: allSeason.filter((b) => b.market === 'spread'), allTotal: allSeason.filter((b) => b.market === 'total'), past, liveCount: live.filter((b) => b.result && isBest(b)).length };
   }, [data.data, sport]);
