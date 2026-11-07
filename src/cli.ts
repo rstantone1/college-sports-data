@@ -7,6 +7,7 @@ import { ingestRosters } from './ingest/rosters.js';
 import { computeRatings, saveRatings, saveImpacts } from './ratings/efficiency.js';
 import { writePredictions } from './predictions.js';
 import { backfillLines, refreshLines } from './ingest/lines.js';
+import { exportEdgePack } from './export/edgePack.js';
 import { ingestNcaaGames, ingestNcaaBox } from './ingest/ncaa.js';
 import { ensureSport } from './ingest/teams.js';
 import type { SportConfig } from './sports.js';
@@ -38,6 +39,7 @@ async function main() {
     // Betting lines: a whole season (finished games, cleaned against the market) or just the next few days.
     case 'lines:backfill': { const s = sport(args.sport); await backfillLines(s, season(s.id), { out: args.out, workers: args.workers ? Number(args.workers) : undefined }); break; }
     case 'lines:refresh': { const s = sport(args.sport); await refreshLines(s, season(s.id)); break; }
+    case 'export:edge': { const s = sport(args.sport); await exportEdgePack(s, Number(args.from), Number(args.to), args.out ?? `out/edge-${s.id}.json.gz`); break; }
 
     // Full daily refresh for one sport: schedule/scores, new box scores, ratings.
     case 'daily': {

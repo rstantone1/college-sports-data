@@ -1,0 +1,36 @@
+name: Research export (lines and factors)
+
+# Manual: export games with market lines, venues, game types and box-score luck inputs for offline factor testing.
+on:
+  workflow_dispatch:
+    inputs:
+      sports:
+        description: 'JSON list of {"sport","from","to"}'
+        required: true
+        default: '[{"sport":"mbb","from":2013,"to":2027},{"sport":"cfb","from":2014,"to":2026},{"sport":"wbb","from":2022,"to":2027}]'
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        include: ${{ fromJSON(inputs.sports) }}
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      PG_POOL_MAX: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsx src/cli.ts export:edge --sport=${{ matrix.sport }} --from=${{ matrix.from }} --to=${{ matrix.to }} --out=out/edge-${{ matrix.sport }}.json.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: edge-${{ matrix.sport }}
+          path: out/
+          retention-days: 30

@@ -27,7 +27,7 @@ jobs:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
       PG_POOL_MAX: "1"
-      LINES_DELAY_MS: "110"
+      LINES_DELAY_MS: "140"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
