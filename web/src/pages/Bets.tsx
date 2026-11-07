@@ -33,12 +33,15 @@ export function BetsPage() {
     const replay = (data.data?.replay ?? []).filter(pick);
     const isBest = (b: Bet) => b.tier === 'best' || b.tier === 'strong';
     const now = Date.now();
-    const upcoming = live.filter((b) => !b.completed && new Date(b.start_time).getTime() > now - 3 * 3600e3 && isBest(b));
+    const soon = (b: Bet) => !b.completed && new Date(b.start_time).getTime() > now - 3 * 3600e3;
+    const upcoming = live.filter((b) => soon(b) && isBest(b));
+    const leans = live.filter((b) => soon(b) && b.tier === 'lean').sort((a, b) => b.edge - a.edge).slice(0, 12);
+    const leanRec = [...replay.filter(cur), ...live.filter((b) => b.result)].filter((b) => b.tier === 'lean');
     // This season's best bets: replayed picks (what we'd have flagged, graded against the real line) plus live ones.
     const season = [...replay.filter(cur), ...live.filter((b) => b.result)].filter(isBest).sort((a, b) => +new Date(b.start_time) - +new Date(a.start_time));
     const allSeason = [...replay.filter(cur), ...live.filter((b) => b.result)];
     const past = replay.filter((b) => !cur(b) && isBest(b));
-    return { upcoming, season, allSpread: allSeason.filter((b) => b.market === 'spread'), allTotal: allSeason.filter((b) => b.market === 'total'), past, liveCount: live.filter((b) => b.result && isBest(b)).length };
+    return { upcoming, leans, leanRec, season, allSpread: allSeason.filter((b) => b.market === 'spread'), allTotal: allSeason.filter((b) => b.market === 'total'), past, liveCount: live.filter((b) => b.result && isBest(b)).length };
   }, [data.data, sport]);
 
   if (data.loading) return <Loading />;
@@ -75,6 +78,12 @@ export function BetsPage() {
             <div className="betlist">{list.map((b) => <BetCard key={b.id} b={b} />)}</div>
           </div>
         ))}
+      </section>
+
+      <section className="hsec">
+        <h2>Leans</h2>
+        <p className="muted sm hsub">Not a tested edge: the games where our number and the books disagree most, so there's always something on the board. Graded like everything else{(() => { const r = record(view.leanRec); return r.n ? `: ${r.w}-${r.l} (${pctTxt(r.rate)}) this season` : ''; })()}.</p>
+        {!view.leans.length ? <div className="panel empty">No lines posted for upcoming games yet.</div> : <div className="betlist">{view.leans.map((b) => <BetCard key={b.id} b={b} />)}</div>}
       </section>
 
       {view.season.length > 0 && (

@@ -28,6 +28,7 @@ jobs:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       PG_POOL_MAX: "1"
       CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+      ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
       FETCH_DELAY_MS: "350"
       SKIP_ROLLUPS: "1"
     steps:

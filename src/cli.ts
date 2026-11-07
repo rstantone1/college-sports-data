@@ -11,6 +11,7 @@ import { exportEdgePack } from './export/edgePack.js';
 import { exportPlayerPack } from './export/playerPack.js';
 import { flagBets, gradeBets } from './bets.js';
 import { writeProjections } from './props.js';
+import { refreshOddsApi } from './ingest/oddsapi.js';
 import { ingestNcaaGames, ingestNcaaBox } from './ingest/ncaa.js';
 import { ensureSport } from './ingest/teams.js';
 import type { SportConfig } from './sports.js';
@@ -43,6 +44,7 @@ async function main() {
     case 'lines:backfill': { const s = sport(args.sport); await backfillLines(s, season(s.id), { out: args.out, workers: args.workers ? Number(args.workers) : undefined }); break; }
     case 'lines:refresh': { const s = sport(args.sport); await refreshLines(s, season(s.id)); break; }
     case 'bets:replay': { const s = sport(args.sport); const { replayBets } = await import('./bets.js'); await replayBets(s, Number(args.season)); break; }
+    case 'lines:shop': { const s = sport(args.sport); await refreshOddsApi(s, season(s.id)); break; }
     case 'props': { const s = sport(args.sport); await writeProjections(s, season(s.id)); break; }
     case 'export:players': { const s = sport(args.sport); await exportPlayerPack(s, Number(args.from), Number(args.to), args.out ?? `out/players-${s.id}.json.gz`); break; }
     case 'export:edge': { const s = sport(args.sport); await exportEdgePack(s, Number(args.from), Number(args.to), args.out ?? `out/edge-${s.id}.json.gz`); break; }
@@ -70,6 +72,8 @@ async function main() {
       if (!isNcaa(s)) { try { await refreshLines(s, y); } catch (e) { console.warn('lines skipped:', (e as Error).message); } }
       // Grade finished bets, then flag new ones against the fresh lines.
       if (!isNcaa(s)) {
+        // Many-book lines (needs ODDS_API_KEY); only twice a day to stay inside the free plan.
+        if (process.env.ODDS_API_KEY && [2, 20].includes(new Date().getUTCHours())) { try { await refreshOddsApi(s, y); } catch (e) { console.warn('odds api skipped:', (e as Error).message); } }
         try { await gradeBets(s, y); } catch (e) { console.warn('grading skipped:', (e as Error).message); }
         try { await flagBets(s, y, r.rated); } catch (e) { console.warn('bets skipped:', (e as Error).message); }
         try { await writeProjections(s, y); } catch (e) { console.warn('projections skipped:', (e as Error).message); }

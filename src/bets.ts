@@ -27,6 +27,11 @@ export const BANDS: Record<string, { spread: Band[]; total: Band[] }> = {
   cfb: { spread: [], total: [] },
 };
 export const MIN_GAMES = 4;
+// Leans: not a tested edge, just where our number and the books disagree most today, so there's always something
+// graded. Shown separately from best bets, with their own honest record. Thresholds in points.
+export const LEAN: Record<string, { spread: number; total: number }> = { mbb: { spread: 3, total: 4 }, wbb: { spread: 3, total: 3 }, cfb: { spread: 4, total: 5 } };
+// How far the line tends to move toward our number per point of disagreement at the open (held-out seasons).
+export const MOVE_PER_PT: Record<string, number> = { mbb: 0.06, wbb: 0.2, cfb: 0.06 };
 export const TIERS = [{ tier: 'best', p: 0.56 }, { tier: 'strong', p: 0.54 }, { tier: 'lean', p: 0.525 }] as const;
 const tierFor = (p: number) => TIERS.find((t) => p >= t.p)?.tier ?? null;
 
@@ -42,7 +47,7 @@ interface Slate { id: number; h: number; a: number; n: boolean; start: string; s
 
 export async function flagBets(s: SportConfig, season: number, rated: Rated) {
   const bands = BANDS[s.id];
-  if (!bands || (!bands.spread.length && !bands.total.length)) { console.log(`${s.id}: no tested betting rule yet, nothing flagged`); return; }
+  if (!bands) { console.log(`${s.id}: no betting rules`); return; }
   const m = sportModel(s);
   const games = await q<Slate>(
     `with home_town as (
@@ -89,21 +94,24 @@ export async function flagBets(s: SportConfig, season: number, rated: Rated) {
     };
     const place = async (market: 'spread' | 'total', side: string, line: number, our: number, edge: number, bandsFor: Band[], reasons: { key: string; text: string }[]) => {
       const b = bandsFor.find((x) => Math.abs(edge) >= x.lo && Math.abs(edge) < x.hi);
-      if (!b) return;
-      const tier = warm ? tierFor(b.p) : 'lean';
+      const leanAt = LEAN[s.id]?.[market] ?? 99;
+      if (!b && Math.abs(edge) < leanAt) return;
+      const tier = b && warm ? tierFor(b.p) : 'lean';
+      const mv = (MOVE_PER_PT[s.id] ?? 0) * Math.abs(edge);
+      if (mv >= 0.4) reasons.push({ key: 'expect', text: `Line usually moves our way about ${mv.toFixed(1)} by game time` });
       if (!tier) return;
       const ins = await q(
         `insert into bet_picks(sport_id, season_year, game_id, kind, market, side, line, price, book, our_number, edge, cover_prob, tier, reasons, model_version)
          values ($1,$2,$3,'live',$4,$5,$6,null,null,$7,$8,$9,$10,$11,$12) on conflict do nothing returning id`,
-        [s.id, season, g.id, market, side, line, our, Math.abs(edge), b.p, tier, JSON.stringify(reasons), BETS_VERSION]);
+        [s.id, season, g.id, market, side, line, our, Math.abs(edge), b?.p ?? null, tier, JSON.stringify(reasons), BETS_VERSION]);
       if (ins.length) n++;
     };
-    if (spread != null && bands.spread.length) {
+    if (spread != null) {
       const edge = margin + spread;                      // + = we like the home side more than the books
       const side = edge > 0 ? 'home' : 'away';
       await place('spread', side, spread, margin, edge, bands.spread, why(edge, side));
     }
-    if (tot != null && bands.total.length) {
+    if (tot != null) {
       const edge = total - tot;
       await place('total', edge > 0 ? 'over' : 'under', tot, total, edge, bands.total, [{ key: 'edge', text: `Our total is ${Math.abs(edge).toFixed(1)} ${edge > 0 ? 'above' : 'below'} the line` }]);
     }
@@ -166,7 +174,7 @@ export async function replayBets(s: SportConfig, season: number) {
       if (Math.abs(edge) >= 0.5) {
         const x = side * (hs - as + line);
         const b = bandOf(bands.spread, Math.abs(edge));
-        out.push({ market: 'spread', side: side > 0 ? 'home' : 'away', line, our: m, edge: Math.abs(edge), p: b?.p ?? null, tier: b ? (warm ? tierFor(b.p) : 'lean') : null,
+        out.push({ market: 'spread', side: side > 0 ? 'home' : 'away', line, our: m, edge: Math.abs(edge), p: b?.p ?? null, tier: b ? (warm ? tierFor(b.p) : 'lean') : Math.abs(edge) >= (LEAN[s.id]?.spread ?? 99) ? 'lean' : null,
           close, clv: useOpen && close != null ? (side > 0 ? line - close : close - line) : null, result: x > 0 ? 'win' : x < 0 ? 'loss' : 'push', id: r.id, made,
           reasons: [{ key: 'edge', text: `We were ${Math.abs(edge).toFixed(1)} pts off the line` }] });
       }
@@ -177,7 +185,7 @@ export async function replayBets(s: SportConfig, season: number) {
       if (Math.abs(edge) >= 0.5) {
         const x = side * (hs + as - line);
         const b = bandOf(bands.total, Math.abs(edge));
-        out.push({ market: 'total', side: side > 0 ? 'over' : 'under', line, our: total, edge: Math.abs(edge), p: b?.p ?? null, tier: b ? (warm ? tierFor(b.p) : 'lean') : null,
+        out.push({ market: 'total', side: side > 0 ? 'over' : 'under', line, our: total, edge: Math.abs(edge), p: b?.p ?? null, tier: b ? (warm ? tierFor(b.p) : 'lean') : Math.abs(edge) >= (LEAN[s.id]?.total ?? 99) ? 'lean' : null,
           close, clv: useOpen && close != null ? (side > 0 ? close - line : line - close) : null, result: x > 0 ? 'win' : x < 0 ? 'loss' : 'push', id: r.id, made,
           reasons: [{ key: 'edge', text: `Our total was ${Math.abs(edge).toFixed(1)} ${side > 0 ? 'above' : 'below'} the line` }] });
       }
