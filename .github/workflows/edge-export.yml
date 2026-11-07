@@ -1,9 +1,13 @@
-name: Research export (lines and factors)
+name: Research export (lines, factors, players)
 
 # Manual: export games with market lines, venues, game types and box-score luck inputs for offline factor testing.
 on:
   workflow_dispatch:
     inputs:
+      what:
+        description: "edge (games, lines, venues) or players (player box scores)"
+        required: true
+        default: "edge"
       sports:
         description: 'JSON list of {"sport","from","to"}'
         required: true
@@ -28,9 +32,9 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx tsx src/cli.ts export:edge --sport=${{ matrix.sport }} --from=${{ matrix.from }} --to=${{ matrix.to }} --out=out/edge-${{ matrix.sport }}.json.gz
+      - run: npx tsx src/cli.ts export:${{ inputs.what }} --sport=${{ matrix.sport }} --from=${{ matrix.from }} --to=${{ matrix.to }} --out=out/${{ inputs.what }}-${{ matrix.sport }}.json.gz
       - uses: actions/upload-artifact@v4
         with:
-          name: edge-${{ matrix.sport }}
+          name: ${{ inputs.what }}-${{ matrix.sport }}
           path: out/
           retention-days: 30
