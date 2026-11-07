@@ -42,6 +42,7 @@ async function main() {
     // Betting lines: a whole season (finished games, cleaned against the market) or just the next few days.
     case 'lines:backfill': { const s = sport(args.sport); await backfillLines(s, season(s.id), { out: args.out, workers: args.workers ? Number(args.workers) : undefined }); break; }
     case 'lines:refresh': { const s = sport(args.sport); await refreshLines(s, season(s.id)); break; }
+    case 'bets:replay': { const s = sport(args.sport); const { replayBets } = await import('./bets.js'); await replayBets(s, Number(args.season)); break; }
     case 'props': { const s = sport(args.sport); await writeProjections(s, season(s.id)); break; }
     case 'export:players': { const s = sport(args.sport); await exportPlayerPack(s, Number(args.from), Number(args.to), args.out ?? `out/players-${s.id}.json.gz`); break; }
     case 'export:edge': { const s = sport(args.sport); await exportEdgePack(s, Number(args.from), Number(args.to), args.out ?? `out/edge-${s.id}.json.gz`); break; }
@@ -130,11 +131,11 @@ async function main() {
       const preds = res.find((r) => r.season === y)?.preds ?? [];
       const sd = RESULT_SD[s.id] ?? 10;
       await q(`delete from predictions where sport_id=$1 and season_year=$2 and kind='replay'`, [s.id, y]);
-      for (let i = 0; i < preds.length; i += 400) {
-        const chunk = preds.slice(i, i + 400);
-        const vals = chunk.map((_, k) => `($1,$2,$${k * 4 + 3},'replay',to_timestamp($${k * 4 + 4}::double precision/1000),'replay-v1',$${k * 4 + 5},$${k * 4 + 6},false)`).join(',');
-        await q(`insert into predictions(sport_id, season_year, game_id, kind, made_at, model_version, home_prob, margin, estimated) values ${vals} on conflict do nothing`,
-          [s.id, y, ...chunk.flatMap((p) => [p.id, p.t - 3600e3, normCdf(p.margin / sd), p.margin])]);
+      for (let i = 0; i < preds.length; i += 300) {
+        const chunk = preds.slice(i, i + 300);
+        const vals = chunk.map((_, k) => `($1,$2,$${k * 6 + 3},'replay',to_timestamp($${k * 6 + 4}::double precision/1000),'replay-v1',$${k * 6 + 5},$${k * 6 + 6},$${k * 6 + 7},$${k * 6 + 8},false)`).join(',');
+        await q(`insert into predictions(sport_id, season_year, game_id, kind, made_at, model_version, home_prob, margin, home_pts, away_pts, estimated) values ${vals} on conflict do nothing`,
+          [s.id, y, ...chunk.flatMap((p) => [p.id, p.t - 3600e3, normCdf(p.margin / sd), p.margin, (p.total + p.margin) / 2, (p.total - p.margin) / 2])]);
       }
       console.log(`${s.id} ${y}: ${preds.length} replayed picks saved (prior season ${seasons[0].games.length ? 'loaded' : 'missing'})`);
       break;

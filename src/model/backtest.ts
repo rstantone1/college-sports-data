@@ -8,6 +8,7 @@ export interface Pred {
   season: number; id: number; t: number; week: number; // week of season the game fell in (0 = first)
   margin: number; actual: number; sp: number | null;
   neutral: boolean;
+  total: number;        // expected combined score
 }
 
 export interface SeasonResult { season: number; preds: Pred[]; hca: number }
@@ -36,8 +37,10 @@ export function walkForward(m: SportModel, seasons: SeasonData[], p: Params, ste
           const g = games[i++];
           const H = r.ratings.get(g.h), A = r.ratings.get(g.a);
           if (!H || !A) continue;
-          const { margin } = predictMargin(m, r, H, A, !!g.n);
-          preds.push({ season: s.year, id: g.id, t: g.t, week, margin, actual: g.hs - g.as, sp: g.sp, neutral: !!g.n });
+          const { margin, units } = predictMargin(m, r, H, A, !!g.n);
+          const add = m.unit === 'inning' || m.unit === 'minute';
+          const hEff = add ? H.o + A.d - r.L : (H.o * A.d) / r.L, aEff = add ? A.o + H.d - r.L : (A.o * H.d) / r.L;
+          preds.push({ season: s.year, id: g.id, t: g.t, week, margin, actual: g.hs - g.as, sp: g.sp, neutral: !!g.n, total: ((hEff + aEff) * units) / m.scale });
         }
       }
     }

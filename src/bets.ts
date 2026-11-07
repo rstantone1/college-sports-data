@@ -16,7 +16,13 @@ export const BETS_VERSION = 'bets-v1';
 type Band = { lo: number; hi: number; p: number; n: number };
 export const BANDS: Record<string, { spread: Band[]; total: Band[] }> = {
   mbb: { spread: [], total: [] },
-  wbb: { spread: [], total: [] },
+  // Women's: trained 2022-24, held out 2025-27; 4+ points off the opener won in each held-out season, with the line
+  // moving toward us after the open (+1.4 to +3.7 points on average).
+  wbb: {
+    spread: [{ lo: 4, hi: 99, p: 0.556, n: 348 }],
+    total: [{ lo: 4, hi: 6, p: 0.548, n: 284 }, { lo: 6, hi: 99, p: 0.59, n: 219 }],
+  },
+  // Football: nothing held up on 2022-26 (spreads or totals), so nothing is flagged.
   cfb: { spread: [], total: [] },
 };
 export const TIERS = [{ tier: 'best', p: 0.56 }, { tier: 'strong', p: 0.54 }, { tier: 'lean', p: 0.525 }] as const;
@@ -125,4 +131,64 @@ export async function gradeBets(s: SportConfig, season: number) {
   // Games called off: void the bet.
   await q(`update bet_picks b set result='void', graded_at=now() from games g where g.id=b.game_id and b.result is null and g.status ~* 'cancel|postpone' and g.start_time < now() - interval '2 days'`);
   console.log(`${s.id} ${season}: ${r[0]?.n ?? 0} bets graded`);
+}
+
+// Replayed bets for a season: for every finished game with a line, the side our model took (from the week-by-week
+// replay, which only used games already played), graded against the opening line when we have it (that's the
+// number a bet placed when lines first post would get) or the close otherwise. Games in a tested band carry its
+// tier; the rest are plain picks (no tier), so the site can show both the best bets and every game.
+export async function replayBets(s: SportConfig, season: number) {
+  const bands = BANDS[s.id] ?? { spread: [], total: [] };
+  const rows = await q<any>(
+    `select g.id, g.home_score hs, g.away_score "as", g.start_time, g.spread, g.total, g.spread_open, g.total_open,
+            p.margin, p.home_pts, p.away_pts
+     from games g
+     join lateral (select * from predictions p where p.game_id=g.id and p.kind in ('replay','live') and not p.estimated
+                   order by (p.kind='replay') desc limit 1) p on true
+     where g.sport_id=$1 and g.season_year=$2 and g.completed and g.home_score is not null and (g.spread is not null or g.total is not null)`, [s.id, season]);
+  const out: any[] = [];
+  const bandOf = (list: Band[], e: number) => list.find((b) => e >= b.lo && e < b.hi) ?? null;
+  for (const r of rows) {
+    const hs = Number(r.hs), as = Number(r.as), m = Number(r.margin);
+    const total = r.home_pts != null && r.away_pts != null ? Number(r.home_pts) + Number(r.away_pts) : null;
+    const made = new Date(new Date(r.start_time).getTime() - 2 * 3600e3).toISOString();
+    if (r.spread != null || r.spread_open != null) {
+      const useOpen = r.spread_open != null, line = Number(useOpen ? r.spread_open : r.spread), close = r.spread == null ? null : Number(r.spread);
+      const edge = m + line, side = edge > 0 ? 1 : -1;
+      if (Math.abs(edge) >= 0.5) {
+        const x = side * (hs - as + line);
+        const b = bandOf(bands.spread, Math.abs(edge));
+        out.push({ market: 'spread', side: side > 0 ? 'home' : 'away', line, our: m, edge: Math.abs(edge), p: b?.p ?? null, tier: b ? tierFor(b.p) : null,
+          close, clv: useOpen && close != null ? (side > 0 ? line - close : close - line) : null, result: x > 0 ? 'win' : x < 0 ? 'loss' : 'push', id: r.id, made,
+          reasons: [{ key: 'edge', text: `We were ${Math.abs(edge).toFixed(1)} pts off the line` }] });
+      }
+    }
+    if (total != null && (r.total != null || r.total_open != null)) {
+      const useOpen = r.total_open != null, line = Number(useOpen ? r.total_open : r.total), close = r.total == null ? null : Number(r.total);
+      const edge = total - line, side = edge > 0 ? 1 : -1;
+      if (Math.abs(edge) >= 0.5) {
+        const x = side * (hs + as - line);
+        const b = bandOf(bands.total, Math.abs(edge));
+        out.push({ market: 'total', side: side > 0 ? 'over' : 'under', line, our: total, edge: Math.abs(edge), p: b?.p ?? null, tier: b ? tierFor(b.p) : null,
+          close, clv: useOpen && close != null ? (side > 0 ? close - line : line - close) : null, result: x > 0 ? 'win' : x < 0 ? 'loss' : 'push', id: r.id, made,
+          reasons: [{ key: 'edge', text: `Our total was ${Math.abs(edge).toFixed(1)} ${side > 0 ? 'above' : 'below'} the line` }] });
+      }
+    }
+  }
+  await q(`delete from bet_picks where sport_id=$1 and season_year=$2 and kind='replay'`, [s.id, season]);
+  for (let i = 0; i < out.length; i += 500) {
+    const c = out.slice(i, i + 500);
+    await q(
+      `insert into bet_picks(sport_id, season_year, game_id, kind, market, side, line, our_number, edge, cover_prob, tier, reasons, model_version, made_at, close_line, clv, result, graded_at)
+       select $1, $2, g, 'replay', mk, sd, ln, ou, ed, cp, tr, rs::jsonb, $3, ma::timestamptz, cl, cv, rt, now()
+       from unnest($4::bigint[], $5::text[], $6::text[], $7::numeric[], $8::numeric[], $9::numeric[], $10::numeric[], $11::text[], $12::text[], $13::text[], $14::numeric[], $15::numeric[], $16::text[])
+            as x(g, mk, sd, ln, ou, ed, cp, tr, rs, ma, cl, cv, rt)
+       on conflict do nothing`,
+      [s.id, season, BETS_VERSION, c.map((x) => x.id), c.map((x) => x.market), c.map((x) => x.side), c.map((x) => x.line), c.map((x) => Math.round(x.our * 10) / 10),
+       c.map((x) => Math.round(x.edge * 10) / 10), c.map((x) => x.p), c.map((x) => x.tier), c.map((x) => JSON.stringify(x.reasons)), c.map((x) => x.made),
+       c.map((x) => x.close), c.map((x) => (x.clv == null ? null : Math.round(x.clv * 10) / 10)), c.map((x) => x.result)]);
+  }
+  const flagged = out.filter((x) => x.tier && x.tier !== 'lean');
+  const rec = (xs: any[]) => { const w = xs.filter((x) => x.result === 'win').length, l = xs.filter((x) => x.result === 'loss').length; return `${w}-${l} (${w + l ? ((w / (w + l)) * 100).toFixed(1) : '–'}%)`; };
+  console.log(`${s.id} ${season}: ${out.length} replayed picks; every game ATS ${rec(out.filter((x) => x.market === 'spread'))}, totals ${rec(out.filter((x) => x.market === 'total'))}; best bets ${rec(flagged)}`);
 }

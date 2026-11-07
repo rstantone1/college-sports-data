@@ -52,7 +52,7 @@ export function RecordPage() {
       <p className="sub">Every pick we make is locked in before the game starts and never changed. Here's how they turned out, good or bad.</p>
       <div className="chips">
         <button className={`chip ${kind === 'live' ? 'on' : ''}`} onClick={() => setKind('live')}>This season</button>
-        {kinds.has('replay') && <button className={`chip ${kind === 'replay' ? 'on' : ''}`} onClick={() => setKind('replay')}>Past seasons</button>}
+        {kinds.has('replay') && <button className={`chip ${kind === 'replay' ? 'on' : ''}`} onClick={() => setKind('replay')}>Replayed</button>}
         <span style={{ width: 8 }} />
         <button className={`chip ${sport === 'all' ? 'on' : ''}`} onClick={() => setSport('all')}>All sports</button>
         {Object.values(SPORTS).map((s) => <button key={s.id} className={`chip ${sport === s.id ? 'on' : ''}`} onClick={() => setSport(s.id)}>{s.short}</button>)}

@@ -32,3 +32,5 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx tsx src/cli.ts replay --sport=${{ matrix.sport }} --season=${{ inputs.season }}
+      # Graded picks for every game with a line (side and total), tiered where a tested rule applies.
+      - run: npx tsx src/cli.ts bets:replay --sport=${{ matrix.sport }} --season=${{ inputs.season }}
