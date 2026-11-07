@@ -20,6 +20,11 @@ const SPORT_KEY: Record<string, string> = { mbb: 'basketball_ncaab', wbb: 'baske
 // Pinnacle sits in the 'eu' region; the women's game rarely has it, so it pulls US books only (half the credits).
 const REGIONS: Record<string, string> = { mbb: 'us,eu', wbb: 'us', cfb: 'us,eu' };
 const SHARP = new Set(['pinnacle', 'circasports', 'circa', 'bookmaker', 'betonlineag', 'lowvig']);
+// Books a US bettor can actually use. European books still help set the fair price but are never flagged.
+const US_BOOKS = new Set(['draftkings', 'fanduel', 'betmgm', 'williamhill_us', 'betrivers', 'espnbet', 'fanatics', 'hardrockbet', 'ballybet',
+  'betparx', 'windcreek', 'bovada', 'mybookieag', 'betus', 'betanysports', 'fliff', 'superbook', 'unibet_us']);
+// A book whose price is this much older than the sharp books' latest move is treated as stale, not as value.
+const STALE_MS = 45 * 60e3;
 // Spread of results around the market's number (points), used to turn a half point into a change in win chance.
 const SD: Record<string, { spread: number; total: number }> = { mbb: { spread: 11, total: 16 }, wbb: { spread: 11, total: 15 }, cfb: { spread: 15, total: 17 } };
 // Expected return needed to flag a price: against a sharp book's fair price, and against the books' median alone.
@@ -51,7 +56,7 @@ const PhiInv = (p: number) => { let lo = -8, hi = 8; for (let i = 0; i < 60; i++
 const median = (xs: number[]) => { const s = [...xs].sort((a, b) => a - b); return s.length % 2 ? s[s.length >> 1] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2; };
 const signed = (a: number) => (a > 0 ? `+${a}` : `${a}`);
 
-interface Row { key: string; book: string; title: string; sharp: boolean; spread: number | null; hsp: number | null; asp: number | null; total: number | null; op: number | null; up: number | null; hml: number | null; aml: number | null }
+interface Row { key: string; book: string; title: string; upd: number; sharp: boolean; spread: number | null; hsp: number | null; asp: number | null; total: number | null; op: number | null; up: number | null; hml: number | null; aml: number | null }
 interface Cand { market: 'spread' | 'total' | 'moneyline'; side: string; line: number | null; price: number; book: string; fair: number; ev: number; fairLine: number; ref: 'sharp' | 'median'; refBooks: string[] }
 
 // Credits left, from a free call. Null when the key is missing or the call fails.
@@ -96,7 +101,7 @@ export async function refreshOddsApi(s: SportConfig, season: number) {
     matched++;
     const per: Row[] = [];
     for (const b of e.bookmakers ?? []) {
-      const row: Row = { key: b.key, book: bookName(String(b.title ?? b.key)), title: String(b.title ?? b.key), sharp: SHARP.has(b.key), spread: null, hsp: null, asp: null, total: null, op: null, up: null, hml: null, aml: null };
+      const row: Row = { key: b.key, book: bookName(String(b.title ?? b.key)), title: String(b.title ?? b.key), upd: Date.parse(b.last_update ?? '') || 0, sharp: SHARP.has(b.key), spread: null, hsp: null, asp: null, total: null, op: null, up: null, hml: null, aml: null };
       for (const m of b.markets ?? []) for (const o of m.outcomes ?? []) {
         const home = o.name === e.home_team;
         if (m.key === 'spreads') { if (home) { row.spread = o.point; row.hsp = o.price; } else row.asp = o.price; }
@@ -145,6 +150,8 @@ export function valueBets(per: Row[], sd: { spread: number; total: number }): Ca
   const out: Cand[] = [];
   const pick = (ok: (r: Row) => boolean) => { const all = per.filter(ok); const sh = all.filter((r) => r.sharp); return { ref: sh.length ? 'sharp' as const : 'median' as const, rs: sh.length ? sh : all, n: all.length }; };
   const minEv = (ref: string) => (ref === 'sharp' ? MIN_EV_SHARP : MIN_EV_MEDIAN);
+  const newest = Math.max(0, ...per.filter((r) => r.sharp).map((r) => r.upd));
+  const usable = (r: Row) => !r.sharp && US_BOOKS.has(r.key) && (!newest || !r.upd || newest - r.upd < STALE_MS);
   // Spreads: each reference book implies a fair expected margin; average them, then price every book's number.
   {
     const { ref, rs, n } = pick((r) => r.spread != null && r.hsp != null && r.asp != null);
@@ -152,7 +159,7 @@ export function valueBets(per: Row[], sd: { spread: number; total: number }): Ca
       const mus = rs.map((r) => -r.spread! - sd.spread * PhiInv(1 - devig(r.hsp!, r.asp!)));
       const mu = ref === 'sharp' ? mus.reduce((x, y) => x + y, 0) / mus.length : median(mus);
       for (const r of per) {
-        if (r.spread == null || r.hsp == null || r.asp == null || r.sharp) continue;
+        if (r.spread == null || r.hsp == null || r.asp == null || !usable(r)) continue;
         const pH = 1 - Phi((-r.spread - mu) / sd.spread);
         for (const [side, p, price] of [['home', pH, r.hsp], ['away', 1 - pH, r.asp]] as const) {
           const ev = p * dec(price) - 1;
@@ -168,7 +175,7 @@ export function valueBets(per: Row[], sd: { spread: number; total: number }): Ca
       const mus = rs.map((r) => r.total! - sd.total * PhiInv(1 - devig(r.op!, r.up!)));
       const mu = ref === 'sharp' ? mus.reduce((x, y) => x + y, 0) / mus.length : median(mus);
       for (const r of per) {
-        if (r.total == null || r.op == null || r.up == null || r.sharp) continue;
+        if (r.total == null || r.op == null || r.up == null || !usable(r)) continue;
         const pO = 1 - Phi((r.total - mu) / sd.total);
         for (const [side, p, price] of [['over', pO, r.op], ['under', 1 - pO, r.up]] as const) {
           const ev = p * dec(price) - 1;
@@ -184,7 +191,7 @@ export function valueBets(per: Row[], sd: { spread: number; total: number }): Ca
       const ps = rs.map((r) => devig(r.hml!, r.aml!));
       const pH = ref === 'sharp' ? ps.reduce((x, y) => x + y, 0) / ps.length : median(ps);
       if (pH > 0.2 && pH < 0.8) for (const r of per) {
-        if (r.hml == null || r.aml == null || r.sharp) continue;
+        if (r.hml == null || r.aml == null || !usable(r)) continue;
         for (const [side, p, price] of [['home', pH, r.hml], ['away', 1 - pH, r.aml]] as const) {
           const ev = p * dec(price) - 1;
           if (ev >= minEv(ref) && ev <= MAX_EV) out.push({ market: 'moneyline', side, line: null, price, book: r.title, fair: p, ev, fairLine: amer(p), ref, refBooks: rs.map((x) => x.title) });
