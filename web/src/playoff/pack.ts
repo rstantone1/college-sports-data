@@ -64,11 +64,11 @@ export function buildPack(season: number, ratings: Rating[], games: Game[], cfp:
     }
     if (t < now - 30 * 3600e3 && !lv) continue;                        // long past with no result: not happening
     let p = pre ? pre.aWin : h >= 0 ? normCdf((teams[h].pr + 29) / m.sd) : 1 - normCdf((teams[a].pr + 29) / m.sd);
-    let liveInfo: PGame['live'];
+    let liveInfo: PGame['live']; const p0 = p;
     if (lv?.state === 'live') {                                         // in progress: the score and the clock take over from the pregame number
       const f = Math.min(1, Math.max(0.01, lv.frac)), mar = pre ? pre.margin : (p - 0.5) * 40;
       p = Math.min(0.995, Math.max(0.005, normCdf((lv.hs - lv.as + mar * f) / (m.sd * Math.sqrt(f)))));
-      liveInfo = { hs: lv.hs, as: lv.as, detail: lv.detail };
+      liveInfo = { hs: lv.hs, as: lv.as, detail: lv.detail, p0 };
     }
     out.push({ key: String(g.id), id: g.id, date: t, week: weekOf(t), h, a, neutral: !!g.neutral_site, conf, p, bubH, bubA, live: liveInfo });
   }

@@ -26,7 +26,7 @@ export interface PGame {
   neutral: boolean; conf: boolean;
   p: number;               // home team's chance to win
   bubH: number; bubA: number;   // a bubble team's chance to win in the home / away team's place
-  live?: { hs: number; as: number; detail: string };
+  live?: { hs: number; as: number; detail: string; p0: number };   // p0: the home team's chance before kickoff
 }
 export interface PConf { name: string; teams: number[]; power: boolean; title: boolean; set?: [number, number] }
 export interface Pack {
@@ -38,7 +38,7 @@ export interface Pack {
 }
 
 export type Locks = Record<string, number>;   // game key -> winning team index; "t:<conf index>" -> champion index
-export interface Opts { runs: number; locks: Locks; chaos?: number; seed?: number; force?: { team: number; mode: 'winout' | 'loseone' }; keep?: boolean; noise?: boolean }
+export interface Opts { runs: number; locks: Locks; chaos?: number; seed?: number; force?: { team: number; mode: 'winout' | 'loseone' }; keep?: boolean; noise?: boolean; focus?: number[] }
 
 export interface Result {
   runs: number; rare: boolean;                 // rare: the picks describe something that almost never happens
@@ -71,7 +71,7 @@ export function simulate(pack: Pack, o: Opts): Result {
   // The committee is harder to call the more football is still to be played; once the user has settled the games,
   // what's left is only the committee's own unpredictability.
   const open = G ? lock.filter((x) => x < 0).length / G : 0, s0 = C.noise(1), sN = C.noise(pack.releasesLeft);
-  const beta = C.beta, lam = C.carry(pack.releasesLeft), sig = o.noise === false ? 0 : sN <= s0 ? sN : Math.sqrt(s0 * s0 + (sN * sN - s0 * s0) * open);
+  const cliff = C.cliff; const beta = C.beta, lam = C.carry(pack.releasesLeft), sig = o.noise === false ? 0 : sN <= s0 ? sN : Math.sqrt(s0 * s0 + (sN * sN - s0 * s0) * open);
   const tLock = confs.map((_, i) => (`t:${i}` in o.locks ? o.locks[`t:${i}`] : -1));
   const pk = games.map((g) => bend(g.p, k));
   const neutralP = (a: number, b: number) => bend(normCdf((teams[a].pr - teams[b].pr) / pack.sd), k);
@@ -128,7 +128,7 @@ export function simulate(pack: Pack, o: Opts): Result {
     for (let i = 0; i < T; i++) {
       const t = teams[i]; const u1 = r(), u2 = r();
       const z = sig ? Math.sqrt(-2 * Math.log(Math.max(1e-12, u1))) * Math.cos(6.283185307 * u2) : 0;
-      score[i] = beta[0] * wab[i] + beta[1] * (t.pr / 10) + beta[2] * l[i] + (t.power ? beta[3] + beta[5] * l[i] : 0) + lam * t.anchor + sig * z;
+      score[i] = beta[0] * wab[i] + beta[1] * (t.pr / 10) + beta[2] * l[i] + (t.power ? beta[3] + beta[5] * l[i] : 0) + lam * t.anchor + sig * z - (l[i] >= cliff.from ? cliff.per * (l[i] - cliff.from + 1) : 0);
       order[i] = i;
     }
     for (let c = 0; c < confs.length; c++) if (champ[c] >= 0) score[champ[c]] += beta[4];
@@ -164,15 +164,15 @@ export function simulate(pack: Pack, o: Opts): Result {
   const div = (a: Float32Array) => { for (let i = 0; i < a.length; i++) a[i] /= Math.max(1, done); };
   [make, bye, host, auto, titleGame, confChamp, expW, seeds, ...reach].forEach(div);
   const out: Result = { runs: done, rare: done < Math.min(N, 300), make, bye, host, auto, titleGame, confChamp, reach, seeds, expW, outcomes: outcomes?.subarray(0, done * G), made: made?.subarray(0, done * T), seedRun: seedRun?.subarray(0, done * T), champRun: champRun?.subarray(0, done * confs.length) };
-  if (o.keep && done > 200) out.lev = leverage(pack, out, lock);
+  if (o.keep && done > 200) out.lev = leverage(pack, out, lock, o.focus);
   return out;
 }
 
 function pack_gameBetween(pack: Pack, a: number, b: number) { const g = pack.games; for (let i = 0; i < g.length; i++) if (g[i].conf && ((g[i].h === a && g[i].a === b) || (g[i].h === b && g[i].a === a))) return i; return -1; }
 // What each undecided game does to each contender: chance to make the field if the home team wins, minus if it loses.
-function leverage(pack: Pack, r: Result, lock: number[]) {
+function leverage(pack: Pack, r: Result, lock: number[], focus?: number[]) {
   const T = pack.teams.length, G = pack.games.length, N = r.runs, out = r.outcomes!, made = r.made!;
-  const teams = Array.from({ length: T }, (_, i) => i).filter((i) => r.make[i] > 0.004 && r.make[i] < 0.996).sort((a, b) => Math.abs(r.make[a] - 0.5) - Math.abs(r.make[b] - 0.5)).slice(0, 36);
+  const teams = focus ?? Array.from({ length: T }, (_, i) => i).filter((i) => r.make[i] > 0.004 && r.make[i] < 0.996).sort((a, b) => Math.abs(r.make[a] - 0.5) - Math.abs(r.make[b] - 0.5)).slice(0, 36);
   const games = Array.from({ length: G }, (_, i) => i).filter((i) => lock[i] < 0);
   const d = new Float32Array(games.length * teams.length), impact = new Float32Array(games.length);
   const nH = new Float64Array(games.length), mH = new Float64Array(games.length * teams.length), mA = new Float64Array(games.length * teams.length);

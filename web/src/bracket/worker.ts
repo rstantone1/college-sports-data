@@ -17,6 +17,8 @@ self.onmessage = (e: MessageEvent) => {
   const { id, type, body } = e.data; let out: any = null;
   if (type === 'pack') { pack = body.pack; out = true; }
   else if (pack && type === 'sim') { const r: BResult = simulate(pack, { runs: 2500, locks: body.locks, keep: true }); const { outcomes, seedRun, ...rest } = r; out = rest; }
+  else if (pack && type === 'tonight') { const r = simulate(pack, { runs: 2500, locks: {}, keep: true, focus: body.teams }); out = { make: body.teams.map((t: number) => r.make[t]), games: r.lev?.games ?? [], d: r.lev ? Array.from(r.lev.d) : [] }; }
+  else if (type === 'whatif') { const a = simulate(body.a, { runs: 4000, locks: {} }), b = simulate(body.b, { runs: 4000, locks: {} }), t = body.team; const pick = (r: BResult) => ({ make: r.make[t], reach: r.reach.map((x) => x[t]), expW: r.expW[t] }); out = { with: pick(a), without: pick(b) }; }
   else if (pack && type === 'paths') out = paths(pack, body.locks, body.team);
   (self as any).postMessage({ id, out });
 };

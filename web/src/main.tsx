@@ -18,6 +18,8 @@ import { ConferencePage } from './pages/Conference';
 import { AboutPage } from './pages/About';
 import { BracketPage, BracketTeamPage } from './pages/Bracket';
 import { TransfersPage } from './pages/Transfers';
+import { PortalTeamPage } from './pages/Portal';
+import { TonightPage } from './pages/Tonight';
 import { LeadersPage } from './pages/Leaders';
 import { PlayerPage } from './pages/Player';
 import { BetsPage } from './pages/Bets';
@@ -33,6 +35,7 @@ createRoot(document.getElementById('root')!).render(
         <Route path="/bets" element={<Shell><BetsPage /></Shell>} />
         <Route path="/school/:espnId" element={<Shell><SchoolPage /></Shell>} />
         <Route path="/about" element={<Shell><AboutPage /></Shell>} />
+        <Route path="/tonight" element={<Shell><TonightPage /></Shell>} />
         <Route path="/scores" element={<Shell><AllScoresPage /></Shell>} />
         <Route path="/:sport/:season" element={<Shell><SportHub /></Shell>} />
         <Route path="/:sport/:season/rankings" element={<Shell><RatingsPage /></Shell>} />
@@ -46,6 +49,7 @@ createRoot(document.getElementById('root')!).render(
         <Route path="/:sport/:season/playoff" element={<Shell><PlayoffPage /></Shell>} />
         <Route path="/:sport/:season/playoff/:teamId" element={<Shell><PlayoffTeamPage /></Shell>} />
         <Route path="/:sport/:season/transfers" element={<Shell><TransfersPage /></Shell>} />
+        <Route path="/:sport/:season/transfers/:teamId" element={<Shell><PortalTeamPage /></Shell>} />
         <Route path="/:sport/:season/leaders" element={<Shell><LeadersPage /></Shell>} />
         <Route path="/:sport/:season/team/:teamId" element={<Shell><TeamPage /></Shell>} />
         <Route path="/:sport/:season/player/:playerId" element={<Shell><PlayerPage /></Shell>} />

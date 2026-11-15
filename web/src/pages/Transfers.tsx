@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { restAll } from '../api';
 import { useAsync, useCtx, useRatings } from '../hooks';
 import { Loading, ErrorBox } from '../components/Shell';
+import { PortalBoard } from './Portal';
 
 export interface Transfer {
   player_id: number; display_name: string; position: string | null; class_year: string | null; height_in: number | null; hometown: string | null; home_state: string | null;
@@ -21,6 +22,7 @@ export function TransfersPage() {
   const [q, setQ] = useState('');
   const [mode, setMode] = useState<'all' | 'up' | 'in' | 'out'>('all');
   const [conf, setConf] = useState('All');
+  const [view, setView] = useState<'teams' | 'players'>('teams');
   const byId = useMemo(() => new Map((R.data ?? []).map((r) => [r.team_id, r])), [R.data]);
 
   if (!meta.hoops) return <div className="panel empty"><h2>Transfer tracking covers basketball for now.</h2><p>Transfer tracking for baseball and softball is coming soon.</p></div>;
@@ -40,7 +42,12 @@ export function TransfersPage() {
 
   return (
     <>
-      <h1>Transfer tracker</h1>
+      <h1>Transfer portal</h1>
+      <div className="chips" style={{ marginBottom: 12 }}>
+        <button className={`chip ${view === 'teams' ? 'on' : ''}`} onClick={() => setView('teams')}>Team scoreboard</button>
+        <button className={`chip ${view === 'players' ? 'on' : ''}`} onClick={() => setView('players')}>Every move</button>
+      </div>
+      {view === 'teams' ? <PortalBoard /> : <>
       <p className="sub">Every player who changed schools since last season, with what they produced before the move. Stats are what they averaged last season at their old school.</p>
       <div className="cards" style={{ marginBottom: 16 }}>
         <div className="card"><div className="k">Players moved</div><div className="v">{all.length.toLocaleString()}</div><div className="r">with a game on record at both schools</div></div>
@@ -87,6 +94,7 @@ export function TransfersPage() {
         {rows.length > 400 && <p className="muted sm">Showing the first 400 of {rows.length}. Narrow it down with search or a conference.</p>}
         {!rows.length && <p className="muted">No moves match.</p>}
       </div>
+      </>}
     </>
   );
 }

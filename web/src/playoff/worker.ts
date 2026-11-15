@@ -61,6 +61,7 @@ self.onmessage = (e: MessageEvent) => {
     const l = mine.length ? simulate(pack, { runs: 3000, locks: body.locks, chaos: body.chaos, force: { team: body.team, mode: 'loseone' } }) : null;
     out = { left: mine.length, pWin, winout: { make: w.make[body.team], bye: w.bye[body.team] }, loseone: l ? { make: l.make[body.team], bye: l.bye[body.team] } : null };
   }
+  else if (type === 'tonight') { const r = simulate(pack, { runs: RUNS, locks: {}, keep: true, focus: body.teams }); out = { make: body.teams.map((t: number) => r.make[t]), games: r.lev?.games ?? [], d: r.lev ? Array.from(r.lev.d) : [] }; }
   else if (type === 'draw') out = draw(pack, body.locks, body.team, body.chaos ?? 1);
   else if (type === 'paths') out = paths(pack, body.locks, body.team, body.chaos ?? 1);
   else if (type === 'season') {   // one random season, as picks for every game and title game

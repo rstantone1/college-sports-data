@@ -27,12 +27,15 @@ export const formatFor = (season: number): Format => FORMATS[season] ?? { ...FOR
 // The committee is also consistent with itself: about 60% of the gap between its current ranking and this score is
 // still there in its final ranking (88% with one release to go), so each simulated season starts from where the
 // committee has teams today.
-export interface Committee { beta: number[]; carry: (releasesLeft: number) => number; noise: (releasesLeft: number) => number }
+export interface Committee { beta: number[]; carry: (releasesLeft: number) => number; noise: (releasesLeft: number) => number; cliff: { from: number; per: number } }
 export const COMMITTEE: Committee = {
   beta: [1.916, 1.38, -0.906, 1.147, 0.026, 0.3],
   carry: (n) => (n <= 0 ? 1 : n === 1 ? 0.88 : n <= 3 ? 0.62 : 0.56),
   // Checked by replaying past seasons from 1-4 rankings out: with this much noise, teams we gave 50% a top-12
   // finish got one about half the time, and 99% teams about 96%.
   noise: (n) => (n <= 0 ? 0.3 : n === 1 ? 0.8 : 1.5),
+  // Four losses is a wall, not a slope: in every weekly ranking since 2014 no four-loss team has been in the committee's
+  // top 12 (0 of 62 ranked four-loss teams), so the random give-and-take above must not carry one over the line.
+  cliff: { from: 4, per: 2.5 },
 };
 export const resume = (b: number[], t: { wab: number; pr: number; l: number; power: boolean }) => b[0] * t.wab + b[1] * (t.pr / 10) + b[2] * t.l + (t.power ? b[3] + b[5] * t.l : 0);

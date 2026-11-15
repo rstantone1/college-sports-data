@@ -97,6 +97,7 @@ export function HomePage() {
 
       {!follows.length && <p className="hometag">Ratings, win chances and playoff odds for every team in college football, basketball, baseball and softball.</p>}
       {featured && <Featured f={featured} />}
+      <Link to="/tonight" className="panel tn-promo"><span><b>Tonight's games</b><span className="muted sm">{follows.length ? 'What every game tonight means for your teams.' : 'Pick a team and see what every game tonight means for them.'}</span></span><span aria-hidden>›</span></Link>
 
       <nav className="sportrow" aria-label="Sports">
         {ORDER.map((s) => {
@@ -177,7 +178,7 @@ export function HomePage() {
           {live.includes('cfb') && <Link to={`/cfb/${SPORTS.cfb.seasons[0].year}/playoff`} className="panel"><b>Playoff picture</b><span className="muted sm">Every team's chance to make the field. Pick games and watch it move.</span></Link>}
           <Link to="/record" className="panel"><b>How good are our picks?</b><span className="muted sm">Every pick we've made, and how often we were right.</span></Link>
           <Link to={`/mbb/${SPORTS.mbb.seasons[0].year}/matchup`} className="panel"><b>Matchup machine</b><span className="muted sm">Any two teams, any court: who wins and by how much.</span></Link>
-          <Link to={`/mbb/${SPORTS.mbb.seasons[0].year}/transfers`} className="panel"><b>Transfer tracker</b><span className="muted sm">Every player who switched schools, and what they did before.</span></Link>
+          <Link to={`/mbb/${SPORTS.mbb.seasons[0].year}/transfers`} className="panel"><b>Transfer portal scoreboard</b><span className="muted sm">Which teams actually got better through the portal, in points a game.</span></Link>
           <Link to="/about" className="panel"><b>How the ratings work</b><span className="muted sm">In plain English, in two minutes.</span></Link>
         </div>
       </section>

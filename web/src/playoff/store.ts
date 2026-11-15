@@ -133,4 +133,7 @@ export const clearRipple = () => set({ ripple: null });
 export const teamScenario = (team: number) => call<{ left: number; pWin: number; winout: { make: number; bye: number }; loseone: { make: number; bye: number } | null }>('team', { team, locks: S.locks, chaos: S.chaos });
 export const drawItUp = (team: number) => call<{ start: number; steps: DrawStep[] }>('draw', { team, locks: S.locks, chaos: S.chaos });
 export const seedPaths = (team: number) => call<{ games: string[]; rows: SeedPath[] }>('paths', { team, locks: S.locks, chaos: S.chaos });
+// What every undecided game does to these teams' chance to make the field (no picks applied).
+export interface Tonight { make: number[]; games: number[]; d: number[] }
+export const tonight = (teams: number[]) => call<Tonight>('tonight', { teams });
 export const randomSeason = () => call<{ picks: Locks }>('season', { locks: S.locks, seed: Math.floor(Math.random() * 1e9) });

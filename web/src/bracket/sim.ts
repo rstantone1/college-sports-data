@@ -21,7 +21,7 @@ function rng(seed: number) { let a = seed >>> 0; return () => { a = (a + 0x6d2b7
 export function normCdf(z: number) { const t = 1 / (1 + 0.2316419 * Math.abs(z)); const d = 0.3989423 * Math.exp((-z * z) / 2); const p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274)))); return z > 0 ? 1 - p : p; }
 const REGION = [1, 16, 8, 9, 5, 12, 4, 13, 6, 11, 3, 14, 7, 10, 2, 15];
 
-export function simulate(pack: BPack, o: { runs: number; locks: BLocks; seed?: number; keep?: boolean }): BResult {
+export function simulate(pack: BPack, o: { runs: number; locks: BLocks; seed?: number; keep?: boolean; focus?: number[] }): BResult {
   const { teams, games, confs, format: F } = pack; const T = teams.length, G = games.length, N = o.runs;
   const make = new Float32Array(T), auto = new Float32Array(T), lines = new Float32Array(T * 18), expW = new Float32Array(T), expL = new Float32Array(T);
   const reach = Array.from({ length: 7 }, () => new Float32Array(T));
@@ -69,15 +69,15 @@ export function simulate(pack: BPack, o: { runs: number; locks: BLocks; seed?: n
   const div = (a: Float32Array) => { for (let i = 0; i < a.length; i++) a[i] /= N; };
   [make, auto, lines, expW, expL, ...reach].forEach(div);
   const out: BResult = { runs: N, make, auto, lines, reach, expW, expL, seedRun, watch, outcomes };
-  if (o.keep && watch.length && N >= 400) out.lev = leverage(pack, out);
+  if (o.keep && watch.length && N >= 400) out.lev = leverage(pack, out, o.focus);
   return out;
 }
 function bracketOrder(n: number): number[] { let o = [1]; while (o.length < n) { const m = o.length * 2 + 1; o = o.flatMap((s) => [s, m - s]); } return o; }
 
 // What each of the next few days' games does to each bubble team's chance of getting in.
-function leverage(pack: BPack, r: BResult) {
+function leverage(pack: BPack, r: BResult, focus?: number[]) {
   const T = pack.teams.length, N = r.runs, W = r.watch!.length, out = r.outcomes!, sr = r.seedRun!;
-  const teams = Array.from({ length: T }, (_, i) => i).filter((i) => r.make[i] > 0.03 && r.make[i] < 0.97).sort((a, b) => Math.abs(r.make[a] - 0.5) - Math.abs(r.make[b] - 0.5)).slice(0, 40);
+  const teams = focus ?? Array.from({ length: T }, (_, i) => i).filter((i) => r.make[i] > 0.03 && r.make[i] < 0.97).sort((a, b) => Math.abs(r.make[a] - 0.5) - Math.abs(r.make[b] - 0.5)).slice(0, 40);
   const d = new Float32Array(W * teams.length), impact = new Float32Array(W), nH = new Float64Array(W), mH = new Float64Array(W * teams.length), mA = new Float64Array(W * teams.length);
   for (let s = 0; s < N; s++) { const mk = teams.map((t) => sr[s * T + t] > 0); for (let gi = 0; gi < W; gi++) { const hw = out[s * W + gi]; if (hw) nH[gi]++; const row = gi * teams.length; for (let ti = 0; ti < teams.length; ti++) if (mk[ti]) { if (hw) mH[row + ti]++; else mA[row + ti]++; } } }
   for (let gi = 0; gi < W; gi++) { const h = nH[gi], a = N - h; if (h < 100 || a < 100) continue; const row = gi * teams.length; for (let ti = 0; ti < teams.length; ti++) { const v = mH[row + ti] / h - mA[row + ti] / a, pool = (mH[row + ti] + mA[row + ti]) / N, se = Math.sqrt(pool * (1 - pool) * (1 / h + 1 / a)); if (Math.abs(v) > 2.8 * se && Math.abs(v) >= 0.02) { d[row + ti] = v; impact[gi] += Math.abs(v); } } }

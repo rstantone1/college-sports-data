@@ -11,12 +11,12 @@ import { ShareButton, type Card } from '../components/ShareCard';
 const ord = (n: number) => `${n}${n % 10 === 1 && n % 100 !== 11 ? 'st' : n % 10 === 2 && n % 100 !== 12 ? 'nd' : n % 10 === 3 && n % 100 !== 13 ? 'rd' : 'th'}`;
 const pts = (d: number) => `${d > 0 ? '+' : '−'}${Math.abs(Math.round(d * 100))}`;
 
-const seedWords = (l: SeedLine) => (l.make < 0.02 ? 'Out' : `${l.make < 0.9 ? `${pct(l.make)} in · ` : ''}No. ${l.mode} seed${l.lo !== l.hi ? ` (${l.lo}–${l.hi})` : ''}`);
+const seedWords = (l: SeedLine) => (l.make < 0.02 ? 'Out' : `${l.make < 0.9 ? `${pct(l.make)} in · ` : ''}${l.lo !== l.hi ? `most often the No. ${l.mode} seed (anywhere from No. ${l.lo} to No. ${l.hi})` : `the No. ${l.mode} seed`}`);
 function PathRow({ title, sub, line, size, byes, onClick, children }: { title: string; sub: string; line: SeedLine; size: number; byes: number; onClick?: () => void; children?: React.ReactNode }) {
   const top = Math.max(0.0001, ...line.dist);
   return (
     <div className={`po-pathrow ${onClick ? 'tap' : ''}`} onClick={onClick} role={onClick ? 'button' : undefined}>
-      <div className="po-path-head"><span><b>{title}</b><span className="muted sm" style={{ display: 'block' }}>{sub}</span></span><span className="po-path-seed">{line.make < 0.02 ? 'Out' : line.make < 0.35 ? <>Likely out<span className="muted sm" style={{ display: 'block' }}>{pct(line.make)} in, as the No. {line.mode} seed</span></> : <>No. {line.mode}<span className="muted sm" style={{ display: 'block' }}>{line.make >= 0.995 ? 'in' : `${pct(line.make)} in`}{line.bye >= 0.05 ? ` · ${pct(line.bye)} bye` : ''}</span></>}</span></div>
+      <div className="po-path-head"><span><b>{title}</b><span className="muted sm" style={{ display: 'block' }}>{sub}</span></span><span className="po-path-seed">{line.make < 0.02 ? 'Out' : line.make < 0.35 ? <>Likely out<span className="muted sm" style={{ display: 'block' }}>{pct(line.make)} in, most often as the No. {line.mode} seed</span></> : <>No. {line.mode} seed<span className="muted sm" style={{ display: 'block' }}>{line.dist.filter((d) => d >= 0.02).length > 1 ? 'most likely · ' : ''}{line.make >= 0.995 ? 'in' : `${pct(line.make)} in`}{line.bye >= 0.05 ? ` · ${pct(line.bye)} bye` : ''}</span></>}</span></div>
       <div className="po-strip" aria-hidden>
         {Array.from({ length: size }, (_, k) => { const v = line.dist[k + 1]; return <span key={k} className={k < byes ? 'bye' : ''} style={{ ['--a' as any]: v < 0.01 ? 0 : 0.15 + 0.85 * (v / top), color: v / top > 0.5 ? '#fff' : v >= 0.01 ? 'var(--ink)' : undefined }}>{k + 1}</span>; })}
         <span className="out" style={{ ['--a' as any]: line.dist[0] < 0.01 ? 0 : 0.15 + 0.85 * (line.dist[0] / top), color: line.dist[0] / top > 0.5 ? '#fff' : line.dist[0] >= 0.01 ? 'var(--ink)' : undefined }}>Out</span>
@@ -80,7 +80,7 @@ export function PlayoffTeamPage() {
 
       <section className="hsec">
         <h2>Seed paths</h2>
-        <p className="muted hsub">Where {t.name} lands for each way their remaining games can go. Darker boxes are likelier seeds. Tap a path to put it on the board.</p>
+        <p className="muted hsub">Where {t.name} lands for each way their remaining games can go. The field is seeded 1 through {size} in the order the committee ranks it, and the top {F.byes} seeds skip the first round. Each row shows the single likeliest seed; the boxes show every seed still possible, darker for likelier. Tap a path to put it on the board.</p>
         {!sp ? <Loading rows={3} /> : !sp.games.length ? <div className="po-paths"><PathRow title="From here" sub="No regular-season games left to play" line={sp.rows[0].all} size={size} byes={F.byes} /></div> : (
           <div className="po-paths">{sp.rows.map((r, i) => {
             const title = r.wins.map((w, k) => { const g = p.games.find((x) => x.key === r.keys[k])!; const opp = g.h === ti ? g.a : g.h; return `${w ? 'Beat' : 'Lose to'} ${opp >= 0 ? p.teams[opp].name : 'FCS opponent'}`; }).join(', then ').replace(/, then (Beat|Lose)/g, (_, v) => `, then ${v.toLowerCase()}`);

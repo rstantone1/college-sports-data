@@ -492,3 +492,51 @@ main table a{display:inline-flex;align-items:center;min-height:40px}
 .recordpill{min-height:40px;display:inline-flex;align-items:center}
 .leader-row{min-height:40px}
 .recordpill{gap:5px}
+
+/* Tonight's games */
+.tn-team{margin:0 0 12px;padding:14px}
+.tn-head{display:flex;align-items:center;gap:12px}
+.tn-head>span:nth-child(2){flex:1;min-width:0;display:flex;flex-direction:column}
+.tn-head b{font-size:20px}
+.tn-head .num{font-size:34px;font-weight:800;font-family:var(--display)}
+.tn-own{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:12px;padding:12px;border-radius:12px;background:var(--bg);font-size:16px}
+.tn-wl{display:flex;flex-direction:column;align-items:flex-end;gap:2px;font-size:15px;white-space:nowrap}
+.tn-wl b{font-size:18px;font-variant-numeric:tabular-nums}
+.tn-k{margin:14px 0 2px;font-size:13px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.tn-note{margin:12px 0 0;font-size:15px}
+.tn-list{list-style:none;margin:0;padding:0}
+.tn-list li+li{border-top:1px solid var(--rule)}
+.tn-list a{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px 0;min-height:48px;font-size:16px}
+.tn-list .sm{font-size:13px;color:var(--muted)}
+.tn-d{font-size:20px;font-variant-numeric:tabular-nums}
+.tn-live{color:var(--hot);font-weight:700}
+.tn-tag{margin-left:8px;font-size:12px;font-weight:800;color:var(--cool);white-space:nowrap}
+.tn-fav{display:flex;flex-direction:column;align-items:flex-end;font-size:13px;color:var(--muted);white-space:nowrap}
+.tn-fav b{font-size:16px;color:var(--ink)}
+.tn-empty{padding:18px;margin:0 0 14px;display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.tn-empty b{font-size:18px} .tn-empty p{margin:0}
+.linkish{border:0;background:none;padding:0;font:inherit;color:var(--cool);text-decoration:underline;cursor:pointer}
+.tn-promo{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;margin:0 0 14px}
+.tn-promo b{font-size:18px;display:block}
+
+/* Portal scoreboard */
+.pt-list{list-style:none;margin:0;padding:0}
+.pt-list li+li{border-top:1px solid var(--rule)}
+.pt-list a,.pt-headrow{display:grid;grid-template-columns:minmax(0,1fr) 58px 58px 62px;align-items:center;gap:6px;padding:10px 0;min-height:52px}
+.pt-headrow{min-height:0;padding:4px 0 8px;font-size:13px;font-weight:700;color:var(--muted);text-align:right}
+.pt-list .num{text-align:right;font-size:16px;font-variant-numeric:tabular-nums}
+.pt-net{font-size:19px!important}
+.pt-team{display:flex;align-items:center;gap:10px;min-width:0}
+.pt-team>span:last-child{display:flex;flex-direction:column;min-width:0}
+.pt-team b{font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pt-rk{width:26px;text-align:right;font-size:13px;font-variant-numeric:tabular-nums;flex:0 0 auto}
+.pt-players a{grid-template-columns:minmax(0,1fr) auto}
+.pt-players a>span{display:flex;flex-direction:column;min-width:0}
+.pt-players b{font-size:17px}
+.pt-hero{display:flex;align-items:center;gap:14px;margin:6px 0 16px}
+.pt-odds{padding:16px;margin:0 0 16px}
+.pt-odds-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:10px}
+.pt-odds .k{font-size:13px;font-weight:700;color:var(--muted)}
+.pt-odds-v{display:flex;flex-direction:column}
+.pt-odds-v b{font-size:30px;font-family:var(--display)}
+.card .v.up{color:var(--win)} .card .v.dn{color:var(--hot)}
