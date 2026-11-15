@@ -41,17 +41,17 @@ export function RecordPage() {
     <>
       <Back />
       <h1>Track record</h1>
-      <p className="sub">Every pick we make is locked in before the game starts and never changed. Here's how they turned out, good or bad.</p>
+      <p className="sub">Every pick is recorded before the game starts and never changed. Here's how they've done.</p>
       <div className="chips">
         <button className={`chip ${kind === 'live' ? 'on' : ''}`} onClick={() => setKind('live')}>This season</button>
-        {kinds.has('replay') && <button className={`chip ${kind === 'replay' ? 'on' : ''}`} onClick={() => setKind('replay')}>Replayed</button>}
+        {kinds.has('replay') && <button className={`chip ${kind === 'replay' ? 'on' : ''}`} onClick={() => setKind('replay')}>Past seasons</button>}
         <span style={{ width: 8 }} />
         <button className={`chip ${sport === 'all' ? 'on' : ''}`} onClick={() => setSport('all')}>All sports</button>
         {Object.values(SPORTS).map((s) => <button key={s.id} className={`chip ${sport === s.id ? 'on' : ''}`} onClick={() => setSport(s.id)}>{s.short}</button>)}
       </div>
-      <Link to="/bets" className="panel" style={{ display: 'block', marginBottom: 14 }}><b>Against the spread</b> <span className="muted sm">Our best bets, locked before each game and graded after. ›</span></Link>
-      {kind === 'replay' && <p className="muted sm">Past seasons: we replayed each season week by week, using only the games already played at that point, and predicted the next week. The system never saw the results. It's how we tested it before using it live.</p>}
-      {kind === 'live' && first && <p className="muted sm">Live since {fmtDate(first, { month: 'long', day: 'numeric', year: 'numeric' })}.</p>}
+      <Link to="/bets" className="panel" style={{ display: 'block', marginBottom: 14 }}><b>Against the spread</b> <span className="muted sm">Our best bets, recorded before each game and graded after. ›</span></Link>
+      {kind === 'replay' && <p className="muted sm">How these ratings would have picked every game in past seasons, using only what was known before each one.</p>}
+      {kind === 'live' && first && <p className="muted sm">Tracking since {fmtDate(first, { month: 'long', day: 'numeric', year: 'numeric' })}.</p>}
 
       {!scored.length ? (
         <div className="panel empty">
@@ -63,14 +63,14 @@ export function RecordPage() {
           <div className="cards" style={{ marginBottom: 16 }}>
             <div className="card"><div className="k">Games</div><div className="v">{scored.length.toLocaleString()}</div><div className="r">{pending ? `${pending} still to play` : 'all results in'}</div></div>
             <div className="card"><div className="k">Picked the winner</div><div className="v" style={{ color: 'var(--win)' }}>{pct(right / scored.length)}</div><div className="r">{right.toLocaleString()} of {scored.length.toLocaleString()}</div></div>
-            <div className="card"><div className="k">Average miss on the margin</div><div className="v">{mae.toFixed(1)}</div><div className="r">points or runs, off the final margin</div></div>
+            <div className="card"><div className="k">Average miss</div><div className="v">{mae.toFixed(1)}</div><div className="r">points or runs off the final margin</div></div>
           </div>
           <div className="grid g2e">
             <div className="panel">
-              <h3>Do the percentages mean what they say?</h3>
-              <p className="muted sm">When we gave the favorite a chance in each range, how often did the favorite win? If our numbers are honest, the two columns should be close.</p>
+              <h3>How our win chances hold up</h3>
+              <p className="muted sm">Games grouped by how sure we were. When we give a team a 70% chance, it should win about 70% of the time.</p>
               <table className="box">
-                <thead><tr><th>We said</th><th>Games</th><th>Favorite won</th><th className="hide-sm">In words</th></tr></thead>
+                <thead><tr><th>Our win chance</th><th>Games</th><th>How often it won</th><th className="hide-sm">In words</th></tr></thead>
                 <tbody>
                   {bins.filter((b) => b.n).map((b) => (
                     <tr key={b.lo}>

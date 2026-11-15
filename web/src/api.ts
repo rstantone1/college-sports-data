@@ -7,7 +7,12 @@ const cache = new Map<string, Promise<any>>();
 // Each trip to the database costs ~half a second; the data only changes every three hours anyway. Older copies are
 // shown if the network fails.
 const TTL = 20 * 60 * 1000;
-const skey = (path: string) => `api:${path}`;
+const skey = (path: string) => `api2:${path}`;
+try { Object.keys(localStorage).filter((k) => k.startsWith('api:')).forEach((k) => localStorage.removeItem(k)); } catch { /* unavailable */ }
+// Team logos arrive as 500-pixel images (about 32 KB each) and are shown at 30 to 80 pixels. Ask ESPN's image
+// service for a 160-pixel version instead (about 8 KB), so a page of logos loads in a fraction of the time.
+const smallLogos = (json: string) => json.replace(/https:\/\/a\.espncdn\.com\/i\/teamlogos\/([a-z]+)\/500(-dark)?\/([\w-]+)\.png/g, 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/$1/500$2/$3.png&w=160&h=160');
+const readJson = async (r: Response) => JSON.parse(smallLogos(await r.text()));
 function fromSession(path: string): any | undefined {
   try { const raw = localStorage.getItem(skey(path)); if (!raw) return; const { t, v } = JSON.parse(raw); if (Date.now() - t < TTL) return v; } catch { /* unavailable */ }
 }
@@ -16,14 +21,14 @@ function stale(path: string): any | undefined {
 }
 function toSession(path: string, v: any) {
   try { const raw = JSON.stringify({ t: Date.now(), v }); if (raw.length < 800_000) localStorage.setItem(skey(path), raw); }
-  catch { try { Object.keys(localStorage).filter((k) => k.startsWith('api:')).slice(0, 50).forEach((k) => localStorage.removeItem(k)); } catch { /* unavailable */ } }
+  catch { try { Object.keys(localStorage).filter((k) => k.startsWith('api')).slice(0, 50).forEach((k) => localStorage.removeItem(k)); } catch { /* unavailable */ } }
 }
 export function rest<T = any>(path: string): Promise<T> {
   if (!cache.has(path)) {
     const hit = fromSession(path);
     if (hit !== undefined) { cache.set(path, Promise.resolve(hit)); return cache.get(path)!; }
     const p = fetch(`${URL}/rest/v1/${path}`, { headers: { apikey: KEY, Authorization: `Bearer ${KEY}` } })
-      .then(async (r) => { if (!r.ok) throw new Error(`${r.status} ${await r.text()}`); const v = await r.json(); toSession(path, v); return v; })
+      .then(async (r) => { if (!r.ok) throw new Error(`${r.status} ${await r.text()}`); const v = await readJson(r); toSession(path, v); return v; })
       .catch((e) => { const old = stale(path); if (old !== undefined) return old; throw e; });
     p.catch(() => cache.delete(path));
     cache.set(path, p);
@@ -37,7 +42,7 @@ export async function restFresh<T = any>(path: string, page = 1000): Promise<T[]
   for (let off = 0; ; off += page) {
     const r = await fetch(`${URL}/rest/v1/${path}${path.includes('?') ? '&' : '?'}limit=${page}&offset=${off}`, { headers: { apikey: KEY, Authorization: `Bearer ${KEY}` }, cache: 'no-store' });
     if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
-    const rows: T[] = await r.json(); out.push(...rows);
+    const rows: T[] = await readJson(r); out.push(...rows);
     if (rows.length < page) break;
   }
   return out;

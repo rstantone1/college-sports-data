@@ -71,7 +71,7 @@ function Tonight({ s }: { s: BState }) {
     return <button className={`po-side ${on ? 'on' : ''} ${off ? 'dim' : ''}`} onClick={() => pickB(g.key, idx, pickText(p, g, idx))} aria-pressed={on}><Logo src={t.logo} size={30} /><span className="po-side-n">{t.name}</span><span className="num">{on ? 'Wins' : pct(pw)}</span></button>; };
   return (
     <div>
-      <p className="muted po-hint">The games over the next three days that move the most teams' chances. Tap a winner to see what it does. {cur !== s.base ? '' : ''}</p>
+      <p className="muted po-hint">The games over the next three days that move the most teams' chances. Tap a winner to see what it does.</p>
       {rows.map(({ g, best }) => (
         <div key={g.key} className="po-game">
           <div className="po-game-top"><span>{day(g.date)}</span>{best >= 0 && <span>Means most to {p.teams[best].name}</span>}</div>
@@ -98,14 +98,14 @@ export function BracketPage() {
     <div className="po">
       <Back />
       <h1>Tournament picture</h1>
-      <p className="sub" style={{ marginBottom: 14 }}>Each {meta.short.toLowerCase().replace("'s hoops", "'s")} team's chance to make the {p.format.size}-team NCAA tournament, and how far it goes.{early(p) ? " It's early: with only a few games played these lean on last season and will move a lot." : ''}</p>
+      <p className="sub" style={{ marginBottom: 14 }}>Each {meta.short.toLowerCase().replace("'s hoops", "'s")} team's chance to make the {p.format.size}-team NCAA tournament, and how far it goes.{early(p) ? " It's early in the season, so expect these to move a lot." : ''}</p>
       <Scenario s={s} />
       <div className="po-tabs" role="tablist">{([['board', 'The board'], ['bubble', 'Bubble'], ['tonight', 'Games that matter']] as const).map(([id, label]) => <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? 'on' : ''} onClick={() => setTab(id)}>{label}</button>)}</div>
       {tab === 'board' ? <Board s={s} base={base} /> : tab === 'bubble' ? <Bubble s={s} base={base} /> : <Tonight s={s} />}
       <details className="panel po-how">
         <summary>How this works</summary>
-        <p>We play every remaining game 2,500 times using our win chances, then every conference tournament, then pick the field: each conference's champion, plus the best remaining résumés. A résumé here is wins above bubble, meaning how many more games a team has won than a typical bubble team would have against the same schedule. Tested against every field since 2014, that one number put 98% of the men's at-large range and all of the women's in the right place on seasons it had never seen.</p>
-        <p>The 2027 tournaments have 76 teams. The NCAA hasn't published every detail of the 12-game opening round, so we assume the last twelve at-large teams and the twelve lowest-ranked champions play in it. Seeds follow the same résumé score, which hasn't been checked against past seed lines yet, and conference tournaments are simplified to one bracket seeded by conference record.</p>
+        <p>We play every remaining game 2,500 times using our win chances, then every conference tournament, then fill the field the way the committee does: each conference's champion, plus the best remaining résumés. A résumé here means how many more games a team has won than a typical bubble team would have against the same schedule. Over the last four tournaments, that measure correctly placed 98% of the men's teams and every women's team it had safely in the field.</p>
+        <p>The 2027 tournaments have 76 teams, with a 12-game opening round ahead of the bracket of 64. Until the NCAA publishes the full format, we pair the last twelve at-large teams and the twelve lowest-ranked champions. Seed lines and conference tournaments are estimates.</p>
       </details>
       <Toast s={s} />
     </div>
@@ -138,7 +138,7 @@ export function BracketTeamPage() {
       <div className="po-hero">
         <div className="k">Make the tournament</div>
         <div className="v"><Pct v={make} />{Math.abs(d) >= 0.01 ? <span className={`po-delta ${d > 0 ? 'up' : 'dn'}`}>{d > 0 ? '▲' : '▼'}{Math.abs(Math.round(d * 100))}</span> : null}</div>
-        <div className="muted">{line ? `Most often a No. ${line} seed` : 'Not in the bracket of 64 in any of our seasons'} · our power rating #{t.ourRank}</div>
+        <div className="muted">{line ? `Most often a No. ${line} seed` : 'Outside the bracket in every simulation'} · our power rating #{t.ourRank}</div>
         <div style={{ marginTop: 10 }}><Strip dist={Array.from({ length: 18 }, (_, k) => (k === 0 ? cur.lines[ti * 18] + (1 - cur.make[ti]) + cur.lines[ti * 18 + 17] : cur.lines[ti * 18 + k]))} /></div>
         <div style={{ marginTop: 12 }}><ShareButton card={{ kind: 'team', title: t.name, logo: t.logo, sub: `${t.w}-${t.l}${t.conf >= 0 ? ` · ${p.confs[t.conf].name}` : ''}`, big: pct(make), bigLabel: 'to make the NCAA tournament', lines: [line ? `Most often a No. ${line} seed` : 'Outside the bracket for now', `Final Four ${pct(cur.reach[4][ti])} · Win it all ${pct(cur.reach[6][ti])}`] }} /></div>
       </div>

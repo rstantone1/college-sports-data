@@ -69,7 +69,7 @@ export function PlayoffTeamPage() {
       <div className="po-hero">
         <div className="k">Make the playoff</div>
         <div className="v"><Pct v={make} />{Math.abs(d) >= 0.01 ? <span className={`po-delta ${d > 0 ? 'up' : 'dn'}`}>{d > 0 ? '▲' : '▼'}{Math.abs(Math.round(d * 100))}</span> : null}</div>
-        <div className="muted">{make >= 0.005 && bestSeed > 0 ? `Most often the No. ${bestSeed} seed` : 'Not in any of our 6,000 seasons'}{' · '}Committee {t.cfp ? `#${t.cfp}` : 'unranked'} · résumé {ord(resumeRank)} · our power rating {ord(t.ourRank)}</div>
+        <div className="muted">{make >= 0.005 && bestSeed > 0 ? `Most often the No. ${bestSeed} seed` : 'Out in every simulation'}{' · '}Committee {t.cfp ? `#${t.cfp}` : 'unranked'} · résumé {ord(resumeRank)} · our power rating {ord(t.ourRank)}</div>
       </div>
 
       <div style={{ margin: '0 0 12px' }}><ShareButton card={(): Card => ({ kind: 'team', title: t.name, logo: t.logo, sub: `${t.w}-${t.l}${t.cfp ? ` · CFP #${t.cfp}` : ''}`, big: pct(make), bigLabel: 'to make the College Football Playoff', lines: [...(sc ? [`Win out: ${pct(sc.winout.make)}${sc.loseone ? ` · Lose one more: ${pct(sc.loseone.make)}` : ''}`] : []), make >= 0.005 && bestSeed > 0 ? `Most often the No. ${bestSeed} seed · ${pct(cur.bye[ti])} for a bye` : 'Outside the field in our simulations', ...(sp?.rows[0] && sp.games.length ? [`${sp.rows[0].wins.every(Boolean) ? 'Win every game left' : 'Best case'}: ${sp.rows[0].all.make < 0.02 ? 'still out' : `No. ${sp.rows[0].all.mode} seed`}`] : [])] })} /></div>

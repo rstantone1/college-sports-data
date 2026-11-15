@@ -19,7 +19,7 @@ export function betText(b: Pick<Bet, 'market' | 'side' | 'line'>, homeName: stri
   return b.side === 'home' ? `${homeName} ${sideNum(b.line)}` : `${awayName} ${sideNum(-b.line)}`;
 }
 export const TIER: Record<string, { label: string; cls: string }> = {
-  best: { label: 'Best bet', cls: 'tier best' }, strong: { label: 'Strong', cls: 'tier strong' }, lean: { label: 'Model gap', cls: 'tier lean' },
+  best: { label: 'Best bet', cls: 'tier best' }, strong: { label: 'Strong', cls: 'tier strong' }, lean: { label: 'Our number', cls: 'tier lean' },
   value: { label: 'Best price', cls: 'tier value' },
 };
 // American odds as written: +120, −110.
@@ -88,7 +88,7 @@ export function LineCard({ game, ourMargin, ourTotal, pointWord }: { game: Game;
           <div className="k">Our number</div>
           <div className="v">{m == null ? '–' : Math.abs(m) < 0.5 ? 'Even' : `${m > 0 ? game.home_abbr : game.away_abbr} by ${Math.abs(m).toFixed(1)}`}</div>
           {t != null && <div className="r">Total {t.toFixed(1)}</div>}
-          {(bet || lockedP) && <div className="r muted">Locked in before the game</div>}
+          {(bet || lockedP) && <div className="r muted">Recorded before the game</div>}
         </div>
       </div>
       {edge != null && spread != null && (
@@ -106,7 +106,7 @@ export function LineCard({ game, ourMargin, ourTotal, pointWord }: { game: Game;
         <p className="lc-say">
           {A} {game.away_score}, {H} {game.home_score}. {edge != null && !close(edge) ? <>{sideName} {sideLine} <b className={res === 'win' ? 'W' : res === 'loss' ? 'L' : ''}>{res === 'win' ? 'covered' : res === 'loss' ? "didn't cover" : 'pushed'}</b>.</> : null}
           {tres && tEdge != null && !close(tEdge) && <> The {tEdge > 0 ? 'over' : 'under'} <b className={tres === 'win' ? 'W' : tres === 'loss' ? 'L' : ''}>{tres === 'win' ? 'hit' : tres === 'loss' ? 'missed' : 'pushed'}</b>.</>}
-          {bet?.clv != null && Math.abs(bet.clv) >= 0.5 && <> The line moved {Math.abs(bet.clv).toFixed(1)} {bet.clv > 0 ? 'toward us' : 'against us'} after we flagged it.</>}
+          {bet?.clv != null && Math.abs(bet.clv) >= 0.5 && <> The line moved {Math.abs(bet.clv).toFixed(1)} {bet.clv > 0 ? 'toward us' : 'against us'} after we posted it.</>}
         </p>
       )}
       {shop.length > 1 && (

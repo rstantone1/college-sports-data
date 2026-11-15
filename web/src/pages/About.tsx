@@ -23,7 +23,7 @@ export function AboutPage() {
         <div className="panel">
           <h3>Win chances and predicted scores</h3>
           <p>A matchup takes both teams' offense, defense, and pace and produces an expected score. The win chance comes from how far that expected margin is from zero, compared with how much real games swing: about 11 points in basketball, 15 in football, 4 runs in baseball.</p>
-          <p>Tournament odds play out every remaining game 1,000 times with those win chances, then pick a 68-team field each time the way a committee roughly does: one automatic bid per conference, then the best remaining résumés. The percentage is how often a team made it.</p>
+          <p>Tournament and playoff odds play out the rest of the season thousands of times with those win chances, then fill the field each time the way the selection committee does: conference champions first, then the best remaining résumés. The percentage is how often a team made it.</p>
         </div>
         <div className="panel">
           <h3>Where the data comes from</h3>
@@ -32,7 +32,7 @@ export function AboutPage() {
         </div>
         <div className="panel">
           <h3>Does it work?</h3>
-          <p>Checked against last season with no knowledge of the tournament: our men's ratings had champion Michigan #1 and runner-up UConn in its top ten; our women's ratings had both finalists, UCLA and South Carolina, in its top three.</p>
+          <p>Before last season's tournaments began, our men's ratings had champion Michigan #1 and runner-up UConn in its top ten; our women's ratings had both finalists, UCLA and South Carolina, in its top three.</p>
           <p className="muted sm" style={{ margin: 0 }}>The Advanced view on the ratings page shows the same numbers per 100 possessions (per 10 drives in football, per 9 innings in baseball), which is how analysts compare teams that play at different speeds. Same ratings, different scale.</p>
         </div>
       </div>

@@ -267,8 +267,8 @@ export function PlayoffPage() {
       <details className="panel po-how">
         <summary>How this works</summary>
         <p>We play every remaining game using our win chances (for a game in progress, the score and clock take over), settle each conference's title game, then rank the teams the way the committee does and fill the bracket under this year's rules: the four power-conference champions, the best champion from the other leagues, and the committee's highest-ranked teams after that. Then we do it 5,999 more times and count.</p>
-        <p>The committee part is learned from every weekly ranking it has published since 2014. It mostly rewards who you beat and where (wins a bubble team wouldn't have gotten), how good you look, and how few losses you have. Tested on the last three seasons, which it never saw, it matched 11 of the committee's final top 12 on average. Each simulated season also starts from the committee's own latest ranking{s.cfpDate ? `, released ${new Date(s.cfpDate).toLocaleDateString(undefined, { month: 'long', day: 'numeric' })}` : ''}, because the committee tends to stick with what it has already said.</p>
-        <p>It's an estimate. Conference tiebreakers are simplified to record, head-to-head, then résumé, and thirteen people in a room can always surprise you.</p>
+        <p>Our read on the committee comes from every weekly ranking it has published since 2014. It mostly rewards who you beat and where (wins a bubble team wouldn't have gotten), how good you look, and how few losses you have. Over the last three seasons it matched 11 of the committee's final top 12 on average. Each simulated season also starts from the committee's own latest ranking{s.cfpDate ? `, released ${new Date(s.cfpDate).toLocaleDateString(undefined, { month: 'long', day: 'numeric' })}` : ''}, because the committee tends to stick with what it has already said.</p>
+        <p>These are estimates. Conference tiebreakers are simplified, and thirteen people in a room can always surprise you.</p>
       </details>
       <RippleToast s={s} />
     </div>

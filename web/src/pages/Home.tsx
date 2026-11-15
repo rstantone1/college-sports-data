@@ -95,6 +95,7 @@ export function HomePage() {
         </Link>
       </div>
 
+      {!follows.length && <p className="hometag">Ratings, win chances and playoff odds for every team in college football, basketball, baseball and softball.</p>}
       {featured && <Featured f={featured} />}
 
       <nav className="sportrow" aria-label="Sports">

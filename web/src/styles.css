@@ -480,3 +480,11 @@ button.sheet-row{border:0;font:inherit;font-weight:600;font-size:17px;color:var(
 .po-your-top .num{font-size:30px;font-weight:800;font-family:var(--display)}
 .po-your ul{list-style:none;margin:8px 0 0;padding:8px 0 0;border-top:1px solid var(--rule);display:flex;flex-direction:column;gap:5px;font-size:15px}
 .po-your li{display:flex;justify-content:space-between;gap:10px}
+
+/* Comfortable to tap: nothing a thumb is aimed at is shorter than about 40px. */
+.hometag{font-size:17px;margin:0 0 14px;max-width:60ch}
+.back{min-height:44px;padding:0 10px 0 0;font-size:16px}
+.chip{min-height:40px;padding:8px 14px;font-size:15px;display:inline-flex;align-items:center}
+.chip.static{min-height:0;padding:5px 11px;font-size:14px}
+.hub-head a{padding:10px 0 10px 12px;font-size:15px}
+@media(max-width:640px){ .tbl td{padding-top:11px;padding-bottom:11px} .box td,.box th{padding-top:10px;padding-bottom:10px} .sched a,.gl a{min-height:40px} }

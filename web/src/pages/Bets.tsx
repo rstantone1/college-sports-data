@@ -62,7 +62,7 @@ export function BetsPage() {
     <>
       <Back />
       <h1>Bets</h1>
-      <p className="sub">Two kinds, both written down before the game and graded after: prices a sportsbook got wrong, and the one model edge that held up when we tested it on past seasons.</p>
+      <p className="sub">Two kinds of bets, each recorded before the game and graded after: prices a sportsbook got wrong, and games where our numbers have a proven edge.</p>
       <div className="chips">
         <button className={`chip ${sport === 'all' ? 'on' : ''}`} onClick={() => setSport('all')}>All sports</button>
         {Object.values(SPORTS).filter((s) => sportsWithBets.has(s.id)).map((s) => <button key={s.id} className={`chip ${sport === s.id ? 'on' : ''}`} onClick={() => setSport(s.id)}>{s.short}</button>)}
@@ -70,20 +70,20 @@ export function BetsPage() {
 
       <div className="cards" style={{ marginBottom: 18 }}>
         <div className="card"><div className="k">Best prices</div><div className="v">{pr.n ? `${uTxt(pr.u)}` : '–'}</div><div className="r">{pr.n ? `units · ${pr.w}-${pr.l}${pr.p ? `-${pr.p}` : ''}${pr.clv != null ? ` · beat the closing line by ${pr.clv.toFixed(1)} pts` : ''}` : 'checked every day'}</div></div>
-        <div className="card"><div className="k">Best bets, past seasons</div><div className="v">{past.n ? pctTxt(past.rate) : '–'}</div><div className="r">{past.n ? `${past.w}-${past.l} on seasons the model never saw` : 'not tested for this sport'}</div></div>
-        <div className="card"><div className="k">Best bets, this season</div><div className="v">{live.n ? `${live.w}-${live.l}${live.p ? `-${live.p}` : ''}` : 'Soon'}</div><div className="r">{live.n ? `${pctTxt(live.rate)} · ${uTxt(live.u)} units` : 'teams need four games played first'}</div></div>
+        <div className="card"><div className="k">Best bets, past seasons</div><div className="v">{past.n ? pctTxt(past.rate) : '–'}</div><div className="r">{past.n ? `${past.w}-${past.l} in testing on past seasons` : 'no tested edge in this sport'}</div></div>
+        <div className="card"><div className="k">Best bets, this season</div><div className="v">{live.n ? `${live.w}-${live.l}${live.p ? `-${live.p}` : ''}` : 'Soon'}</div><div className="r">{live.n ? `${pctTxt(live.rate)} · ${uTxt(live.u)} units` : 'starts once teams have played four games'}</div></div>
       </div>
-      {pr.n > 0 && pr.n < 60 && <p className="muted" style={{ margin: '-8px 0 18px', fontSize: 14 }}>{pr.n} best prices graded so far. That's too few to judge by wins and losses; beating the closing line is the early sign that matters.</p>}
+      {pr.n > 0 && pr.n < 60 && <p className="muted" style={{ margin: '-8px 0 18px', fontSize: 14 }}>Early days: {pr.n} best prices graded so far. The number to watch is how often we beat the closing line.</p>}
 
       <section className="hsec">
         <h2>Best prices</h2>
-        <p className="muted hsub" style={{ fontSize: 14 }}>A sportsbook paying more than a bet is worth. We take the odds at the sharpest books, remove their cut to get each side's fair chance, then check every other book's number and price against it. No prediction needed, just a book that's slow to move.</p>
-        {!view.prices.length ? <div className="panel empty">No mispriced lines right now. We check the books every day around noon Central; these come and go quickly.</div> : <div className="betlist">{view.prices.map((b) => <BetCard key={b.id} b={b} />)}</div>}
+        <p className="muted hsub" style={{ fontSize: 14 }}>When one sportsbook pays more than a bet is worth. We work out each side's fair odds from the sharpest books, then check every other book's number and price against it.</p>
+        {!view.prices.length ? <div className="panel empty">No standout prices right now. We check the books every day, and these come and go quickly.</div> : <div className="betlist">{view.prices.map((b) => <BetCard key={b.id} b={b} />)}</div>}
       </section>
 
       <section className="hsec">
         <h2>Best bets coming up</h2>
-        {!view.upcoming.length && <div className="panel empty">No best bets right now. We only flag a game when our number and the books are far enough apart to matter, so some days there are none.</div>}
+        {!view.upcoming.length && <div className="panel empty">No best bets right now. We only call one when our number and the books are far enough apart to matter, so some days there are none.</div>}
         {[...byDay.entries()].map(([day, list]) => (
           <div key={day} style={{ marginBottom: 14 }}>
             <h3 className="dayline">{day}</h3>
@@ -94,7 +94,7 @@ export function BetsPage() {
 
       <section className="hsec">
         <h2>Our number vs. the line</h2>
-        <p className="muted hsub" style={{ fontSize: 14 }}>The games where our ratings and the sportsbooks disagree most. These aren't picks: over ten seasons, gaps like these were a coin flip against the spread. Use them as a second opinion.</p>
+        <p className="muted hsub" style={{ fontSize: 14 }}>Where our ratings and the sportsbooks disagree most. Think of these as a second opinion, not a recommendation.</p>
         {!view.gaps.length ? <div className="panel empty">No lines posted for upcoming games yet.</div> : <div className="betlist">{view.gaps.map((b) => <BetCard key={b.id} b={b} plain />)}</div>}
       </section>
 
@@ -107,7 +107,7 @@ export function BetsPage() {
                 <li key={b.id}>
                   <Link to={`/${b.sport_id}/${b.season_year}/game/${b.game_id}`}>
                     <b className={b.result === 'win' ? 'W' : b.result === 'loss' ? 'L' : 'muted'}>{b.result === 'win' ? 'Won' : b.result === 'loss' ? 'Lost' : 'Push'}</b>
-                    <span>{betText(b, b.home_name, b.away_name)} <span className="muted sm">{b.away_abbr} {b.away_score}, {b.home_abbr} {b.home_score}{b.kind === 'replay' ? ' · replayed' : ''}{isPrice(b) ? ` · best price at ${bookLabel(b.book)}` : ''}</span></span>
+                    <span>{betText(b, b.home_name, b.away_name)} <span className="muted sm">{b.away_abbr} {b.away_score}, {b.home_abbr} {b.home_score}{b.kind === 'replay' ? ' · before launch' : ''}{isPrice(b) ? ` · best price at ${bookLabel(b.book)}` : ''}</span></span>
                     <span className="muted sm">{fmtDate(b.start_time)}</span>
                   </Link>
                 </li>
@@ -120,9 +120,9 @@ export function BetsPage() {
       <section className="hsec" id="how">
         <h2>How this works</h2>
         <div className="panel">
-          <p style={{ marginTop: 0 }}>Our number comes from the same ratings as the rest of the site. A game becomes a best bet only when our number and the sportsbooks' line are far enough apart that bets like it won money when we replayed past seasons week by week, using only what was known before each game. Right now that's women's basketball totals; we tested 40-odd other angles (rest, travel, altitude, letdown spots, line moves) across all three sports and nothing else held up, so nothing else is flagged.</p>
-          <p>Best prices are a different idea: no prediction, just a price. When one book pays more on a side than the sharpest books say it's worth, that bet is expected to make money over time even though any single one can lose. That's the most reliable edge in sports betting, and the one professional bettors measure themselves against. We record every one before the game at the book and odds we saw, and grade it at those odds.</p>
-          <p>Units assume one unit on each bet at the price posted when we flagged it. "Line moved our way" compares that price with where the line closed: the market agreeing with us after the fact is the best early sign a bet was a good one, win or lose.</p>
+          <p style={{ marginTop: 0 }}><b>Best prices.</b> No prediction, just a price. When one sportsbook pays more on a side than the sharpest books say it's worth, that bet is expected to make money over time, even though any single one can lose. It's the most reliable edge in sports betting and the one professionals measure themselves against. We record each one at the book and odds we saw, and grade it at those odds.</p>
+          <p><b>Best bets.</b> Our number comes from the same ratings as the rest of the site. A game becomes a best bet only when our number and the sportsbooks' line are far enough apart that bets like it have won across several past seasons. Today that's women's basketball totals. We tested more than forty other angles, from rest and travel to line moves, and kept only what held up.</p>
+          <p><b>Reading the record.</b> Units assume one unit on each bet at the posted price. Beating the closing line means the market moved toward our side after we posted it, which is the best early sign of a good bet, win or lose.</p>
           <p className="muted sm" style={{ marginBottom: 0 }}>For information and entertainment. No betting system wins every week. If gambling stops being fun, call 1-800-GAMBLER or visit <a href="https://www.ncpgambling.org/help-treatment/" target="_blank" rel="noreferrer">ncpgambling.org</a>.</p>
         </div>
       </section>
