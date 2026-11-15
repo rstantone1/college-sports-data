@@ -1,22 +1,38 @@
-import { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useCtx } from '../hooks';
 import { Back, Loading, ErrorBox } from '../components/Shell';
 import { pct } from '../model';
-import { pick, setLocks, teamScenario, drawItUp } from '../playoff/store';
-import type { DrawStep } from '../playoff/worker';
+import { pick, setLocks, teamScenario, drawItUp, seedPaths } from '../playoff/store';
+import type { DrawStep, SeedPath, SeedLine } from '../playoff/worker';
 import { Pct, Logo, RippleToast, ScenarioBar, usePlayoffData, pickText } from './Playoff';
 
 const ord = (n: number) => `${n}${n % 10 === 1 && n % 100 !== 11 ? 'st' : n % 10 === 2 && n % 100 !== 12 ? 'nd' : n % 10 === 3 && n % 100 !== 13 ? 'rd' : 'th'}`;
 const pts = (d: number) => `${d > 0 ? '+' : '−'}${Math.abs(Math.round(d * 100))}`;
+
+const seedWords = (l: SeedLine) => (l.make < 0.02 ? 'Out' : `${l.make < 0.9 ? `${pct(l.make)} in · ` : ''}No. ${l.mode} seed${l.lo !== l.hi ? ` (${l.lo}–${l.hi})` : ''}`);
+function PathRow({ title, sub, line, size, byes, onClick, children }: { title: string; sub: string; line: SeedLine; size: number; byes: number; onClick?: () => void; children?: React.ReactNode }) {
+  const top = Math.max(0.0001, ...line.dist);
+  return (
+    <div className={`po-pathrow ${onClick ? 'tap' : ''}`} onClick={onClick} role={onClick ? 'button' : undefined}>
+      <div className="po-path-head"><span><b>{title}</b><span className="muted sm" style={{ display: 'block' }}>{sub}</span></span><span className="po-path-seed">{line.make < 0.02 ? 'Out' : line.make < 0.35 ? <>Likely out<span className="muted sm" style={{ display: 'block' }}>{pct(line.make)} in, as the No. {line.mode} seed</span></> : <>No. {line.mode}<span className="muted sm" style={{ display: 'block' }}>{line.make >= 0.995 ? 'in' : `${pct(line.make)} in`}{line.bye >= 0.05 ? ` · ${pct(line.bye)} bye` : ''}</span></>}</span></div>
+      <div className="po-strip" aria-hidden>
+        {Array.from({ length: size }, (_, k) => { const v = line.dist[k + 1]; return <span key={k} className={k < byes ? 'bye' : ''} style={{ ['--a' as any]: v < 0.01 ? 0 : 0.15 + 0.85 * (v / top), color: v / top > 0.5 ? '#fff' : v >= 0.01 ? 'var(--ink)' : undefined }}>{k + 1}</span>; })}
+        <span className="out" style={{ ['--a' as any]: line.dist[0] < 0.01 ? 0 : 0.15 + 0.85 * (line.dist[0] / top), color: line.dist[0] / top > 0.5 ? '#fff' : line.dist[0] >= 0.01 ? 'var(--ink)' : undefined }}>Out</span>
+      </div>
+      {children}
+    </div>
+  );
+}
 
 export function PlayoffTeamPage() {
   const { base } = useCtx(); const { teamId } = useParams(); const nav = useNavigate(); const s = usePlayoffData();
   const p = s.pack, cur = s.cur ?? s.base; const ti = p ? p.teams.findIndex((t) => t.id === Number(teamId)) : -1;
   const [sc, setSc] = useState<Awaited<ReturnType<typeof teamScenario>> | null>(null);
   const [plan, setPlan] = useState<{ start: number; steps: DrawStep[] } | null>(null); const [shown, setShown] = useState(0); const [drawing, setDrawing] = useState(false);
+  const [sp, setSp] = useState<{ games: string[]; rows: SeedPath[] } | null>(null);
   const lockKey = JSON.stringify(s.locks) + s.chaos + s.updated;
-  useEffect(() => { if (ti < 0 || s.status !== 'ready') return; let live = true; setSc(null); setPlan(null); teamScenario(ti).then((r) => live && setSc(r)); return () => { live = false; }; }, [ti, lockKey, s.status]);
+  useEffect(() => { if (ti < 0 || s.status !== 'ready') return; let live = true; setSc(null); setPlan(null); setSp(null); teamScenario(ti).then((r) => live && setSc(r)).then(() => seedPaths(ti)).then((r) => live && setSp(r)); return () => { live = false; }; }, [ti, lockKey, s.status]);
   useEffect(() => { if (!plan || shown >= plan.steps.length) return; const t = setTimeout(() => setShown(shown + 1), 700); return () => clearTimeout(t); }, [plan, shown]);
 
   // Games that move this team's chances the most, its own and everyone else's.
@@ -59,6 +75,25 @@ export function PlayoffTeamPage() {
         <div className="card"><div className="k">If they win out</div><div className="v">{sc ? pct(sc.winout.make) : '…'}</div><div className="r">{sc ? (sc.left ? `${pct(sc.pWin)} to win their last ${sc.left === 1 ? 'game' : sc.left} · title game included if they get there` : 'no games left to lose') : ' '}</div></div>
         <div className="card"><div className="k">If they lose one more</div><div className="v">{sc ? (sc.loseone ? pct(sc.loseone.make) : '–') : '…'}</div><div className="r">{sc?.loseone ? 'one loss in the regular season' : sc ? 'regular season is done' : ' '}</div></div>
       </div>
+
+      <section className="hsec">
+        <h2>Seed paths</h2>
+        <p className="muted hsub">Where {t.name} lands for each way their remaining games can go. Darker boxes are likelier seeds. Tap a path to put it on the board.</p>
+        {!sp ? <Loading rows={3} /> : !sp.games.length ? <div className="po-paths"><PathRow title="From here" sub="No regular-season games left to play" line={sp.rows[0].all} size={size} byes={F.byes} /></div> : (
+          <div className="po-paths">{sp.rows.map((r, i) => {
+            const title = r.wins.map((w, k) => { const g = p.games.find((x) => x.key === r.keys[k])!; const opp = g.h === ti ? g.a : g.h; return `${w ? 'Beat' : 'Lose to'} ${opp >= 0 ? p.teams[opp].name : 'FCS opponent'}`; }).join(', then ').replace(/, then (Beat|Lose)/g, (_, v) => `, then ${v.toLowerCase()}`);
+            const apply = () => { const locks = { ...s.locks }; r.keys.forEach((k, n) => { const g = p.games.find((x) => x.key === k)!; const opp = g.h === ti ? g.a : g.h; if (r.wins[n]) locks[k] = ti; else if (opp >= 0) locks[k] = opp; }); setLocks(locks, title); };
+            const cn = t.conf >= 0 ? p.confs[t.conf].name : '';
+            return (
+              <PathRow key={i} title={title} sub={`Happens ${pct(r.p)} of the time`} line={r.all} size={size} byes={F.byes} onClick={apply}>
+                {r.champ && <div className="po-path-sub"><span>…and win the {cn} title <span className="muted">({pct(r.pChamp)})</span></span><b>{seedWords(r.champ)}</b></div>}
+                {r.noChamp && <div className="po-path-sub"><span>…without the {cn} title</span><b>{seedWords(r.noChamp)}</b></div>}
+              </PathRow>
+            );
+          })}</div>
+        )}
+        {sp && sp.games.length === 3 && mine.length > 3 && <p className="muted sm" style={{ marginTop: 8 }}>Showing their next three games.</p>}
+      </section>
 
       <section className="hsec">
         <h2>How far they go</h2>

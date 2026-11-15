@@ -47,6 +47,7 @@ export interface Result {
   seeds: Float32Array;                         // teams x field size
   expW: Float32Array;
   outcomes?: Uint8Array; made?: Uint8Array;    // per run: who won each game (1 = home), who made the field
+  seedRun?: Uint8Array; champRun?: Int16Array; // per run: each team's seed (0 = out), each conference's champion
   lev?: { teams: number[]; games: number[]; d: Float32Array; impact: Float32Array };
 }
 
@@ -65,6 +66,7 @@ export function simulate(pack: Pack, o: Opts): Result {
   const reach = Array.from({ length: rounds + 1 }, () => new Float32Array(T));
   const seeds = new Float32Array(T * size);
   const outcomes = o.keep ? new Uint8Array(N * G) : undefined, made = o.keep ? new Uint8Array(N * T) : undefined;
+  const seedRun = o.keep ? new Uint8Array(N * T) : undefined, champRun = o.keep ? new Int16Array(N * confs.length) : undefined;
   const lock = games.map((g) => (g.key in o.locks ? o.locks[g.key] : -1));
   // The committee is harder to call the more football is still to be played; once the user has settled the games,
   // what's left is only the committee's own unpredictability.
@@ -143,7 +145,7 @@ export function simulate(pack: Pack, o: Opts): Result {
     for (let j = 0; j < T && n < size; j++) { const i = order[j]; if (isAuto[i]) field[n++] = i; else if (atLarge > 0) { field[n++] = i; atLarge--; } }
     // Bracket. Seeds follow the ranking; the top seeds sit out the first round, which is played at the better seed's home.
     const alive = new Int16Array(F.byes * 2);    // slot -> team, in bracket order by bye seed
-    for (let s = 0; s < size; s++) { const i = field[s]; make[i]++; seeds[i * size + s]++; if (isAuto[i]) auto[i]++; if (s < F.byes) bye[i]++; else if (s < F.byes * 2) host[i]++; if (made) made[done * T + i] = 1; }
+    for (let s = 0; s < size; s++) { const i = field[s]; make[i]++; seeds[i * size + s]++; if (isAuto[i]) auto[i]++; if (s < F.byes) bye[i]++; else if (s < F.byes * 2) host[i]++; if (made) made[done * T + i] = 1; if (seedRun) seedRun[done * T + i] = s + 1; }
     for (let j = 0; j < F.byes; j++) {            // first round: seed byes+1+j hosts seed size-j, winner meets bye seed byes-j
       const hi = field[F.byes + j], lo = field[size - 1 - j], u = r();
       const win = u < homeP(hi, lo) ? hi : lo, byeSeed = F.byes - j;
@@ -156,11 +158,12 @@ export function simulate(pack: Pack, o: Opts): Result {
     for (let c = 0; c < confs.length; c++) if (champ[c] >= 0) confChamp[champ[c]]++;
     for (let i = 0; i < T; i++) expW[i] += w[i];
     if (outcomes) outcomes.set(res, done * G);
+    if (champRun) champRun.set(champ, done * confs.length);
     done++;
   }
   const div = (a: Float32Array) => { for (let i = 0; i < a.length; i++) a[i] /= Math.max(1, done); };
   [make, bye, host, auto, titleGame, confChamp, expW, seeds, ...reach].forEach(div);
-  const out: Result = { runs: done, rare: done < Math.min(N, 300), make, bye, host, auto, titleGame, confChamp, reach, seeds, expW, outcomes: outcomes?.subarray(0, done * G), made: made?.subarray(0, done * T) };
+  const out: Result = { runs: done, rare: done < Math.min(N, 300), make, bye, host, auto, titleGame, confChamp, reach, seeds, expW, outcomes: outcomes?.subarray(0, done * G), made: made?.subarray(0, done * T), seedRun: seedRun?.subarray(0, done * T), champRun: champRun?.subarray(0, done * confs.length) };
   if (o.keep && done > 200) out.lev = leverage(pack, out, lock);
   return out;
 }

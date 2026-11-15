@@ -456,3 +456,17 @@ button.sheet-row{border:0;font:inherit;font-weight:600;font-size:17px;color:var(
 .po-plan-row.in{animation:po-up .35s cubic-bezier(.2,.8,.2,1)}
 .po-plan-row .po-n{margin-right:8px}
 @media(prefers-reduced-motion:reduce){ .po-toast,.po-plan-row.in{animation:none} .po-live::before{animation:none} }
+.po-paths{display:flex;flex-direction:column;gap:8px}
+.po-pathrow{background:var(--panel);border:1px solid var(--rule);border-radius:var(--r);padding:12px 14px}
+.po-pathrow.tap{cursor:pointer}
+.po-pathrow.tap:active{background:var(--soft)}
+.po-path-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;font-size:16px}
+.po-path-seed{font-family:var(--display);font-weight:800;font-size:24px;line-height:1.05;text-align:right;white-space:nowrap}
+.po-path-seed .sm{font-family:var(--body);font-weight:600}
+.po-strip{display:grid;grid-template-columns:repeat(12,1fr) 1.6fr;gap:3px;margin:10px 0 2px}
+.po-strip span{position:relative;text-align:center;font-size:12px;font-weight:800;padding:6px 0;border-radius:6px;background:var(--soft);color:var(--muted);overflow:hidden;isolation:isolate}
+.po-strip span::before{content:"";position:absolute;inset:0;background:var(--cool);opacity:var(--a,0);z-index:-1}
+.po-strip span.bye::before{background:var(--win)}
+.po-strip span.out::before{background:var(--hot)}
+.po-path-sub{display:flex;justify-content:space-between;gap:12px;border-top:1px solid var(--rule);margin-top:8px;padding-top:8px;font-size:15px}
+.po-path-sub b{white-space:nowrap}
