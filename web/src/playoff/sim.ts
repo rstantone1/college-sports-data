@@ -65,8 +65,11 @@ export function simulate(pack: Pack, o: Opts): Result {
   const reach = Array.from({ length: rounds + 1 }, () => new Float32Array(T));
   const seeds = new Float32Array(T * size);
   const outcomes = o.keep ? new Uint8Array(N * G) : undefined, made = o.keep ? new Uint8Array(N * T) : undefined;
-  const beta = C.beta, lam = C.carry(pack.releasesLeft), sig = o.noise === false ? 0 : C.noise(pack.releasesLeft);
   const lock = games.map((g) => (g.key in o.locks ? o.locks[g.key] : -1));
+  // The committee is harder to call the more football is still to be played; once the user has settled the games,
+  // what's left is only the committee's own unpredictability.
+  const open = G ? lock.filter((x) => x < 0).length / G : 0, s0 = C.noise(1), sN = C.noise(pack.releasesLeft);
+  const beta = C.beta, lam = C.carry(pack.releasesLeft), sig = o.noise === false ? 0 : sN <= s0 ? sN : Math.sqrt(s0 * s0 + (sN * sN - s0 * s0) * open);
   const tLock = confs.map((_, i) => (`t:${i}` in o.locks ? o.locks[`t:${i}`] : -1));
   const pk = games.map((g) => bend(g.p, k));
   const neutralP = (a: number, b: number) => bend(normCdf((teams[a].pr - teams[b].pr) / pack.sd), k);
@@ -174,7 +177,9 @@ function leverage(pack: Pack, r: Result, lock: number[]) {
     const ob = s * G, mb = s * T;
     for (let gi = 0; gi < games.length; gi++) { const hw = out[ob + games[gi]]; if (hw) nH[gi]++; const row = gi * teams.length; for (let ti = 0; ti < teams.length; ti++) if (made[mb + teams[ti]]) { if (hw) mH[row + ti]++; else mA[row + ti]++; } }
   }
-  for (let gi = 0; gi < games.length; gi++) { const h = nH[gi], a = N - h; const row = gi * teams.length; for (let ti = 0; ti < teams.length; ti++) { const v = h >= 40 && a >= 40 ? mH[row + ti] / h - mA[row + ti] / a : 0; d[row + ti] = v; impact[gi] += Math.abs(v); } }
+  for (let gi = 0; gi < games.length; gi++) { const h = nH[gi], a = N - h; const row = gi * teams.length; if (h < 120 || a < 120) continue;
+    // Keep only swings bigger than the dice could produce on their own.
+    for (let ti = 0; ti < teams.length; ti++) { const v = mH[row + ti] / h - mA[row + ti] / a; const pool = (mH[row + ti] + mA[row + ti]) / N; const se = Math.sqrt(pool * (1 - pool) * (1 / h + 1 / a)); if (Math.abs(v) > 2.8 * se && Math.abs(v) >= 0.015) { d[row + ti] = v; impact[gi] += Math.abs(v); } } }
   return { teams, games, d, impact };
 }
 

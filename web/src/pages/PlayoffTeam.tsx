@@ -22,7 +22,7 @@ export function PlayoffTeamPage() {
   // Games that move this team's chances the most, its own and everyone else's.
   const path = useMemo(() => {
     if (!p || !cur?.lev || ti < 0) return []; const lv = cur.lev, k = lv.teams.indexOf(ti); if (k < 0) return [];
-    return lv.games.map((gi, n) => ({ g: p.games[gi], d: lv.d[n * lv.teams.length + k] })).filter((x) => Math.abs(x.d) >= 0.02).sort((a, b) => Math.abs(b.d) - Math.abs(a.d)).slice(0, 8);
+    return lv.games.map((gi, n) => ({ g: p.games[gi], d: lv.d[n * lv.teams.length + k] })).filter((x) => Math.abs(x.d) >= 0.025 && x.g.h >= 0 && x.g.a >= 0).sort((a, b) => Math.abs(b.d) - Math.abs(a.d)).slice(0, 8);
   }, [p, cur, ti]);
 
   if (s.status === 'error') return <><Back /><ErrorBox msg={s.error ?? ''} /></>;
@@ -51,19 +51,19 @@ export function PlayoffTeamPage() {
 
       <div className="po-hero">
         <div className="k">Make the playoff</div>
-        <div className="v"><Pct v={make} />{d ? <span className={`po-delta ${d > 0 ? 'up' : 'dn'}`}>{d > 0 ? '▲' : '▼'}{Math.abs(Math.round(d * 100))}</span> : null}</div>
+        <div className="v"><Pct v={make} />{Math.abs(d) >= 0.01 ? <span className={`po-delta ${d > 0 ? 'up' : 'dn'}`}>{d > 0 ? '▲' : '▼'}{Math.abs(Math.round(d * 100))}</span> : null}</div>
         <div className="muted">{make >= 0.005 && bestSeed > 0 ? `Most often the No. ${bestSeed} seed` : 'Not in any of our 6,000 seasons'}{' · '}Committee {t.cfp ? `#${t.cfp}` : 'unranked'} · résumé {ord(resumeRank)} · our power rating {ord(t.ourRank)}</div>
       </div>
 
       <div className="cards po-if">
-        <div className="card"><div className="k">If they win out</div><div className="v">{sc ? pct(sc.winout.make) : '…'}</div><div className="r">{sc ? (sc.left ? `${pct(sc.pWin)} chance they do · ${pct(sc.winout.bye)} for a bye` : 'no games left to lose') : ' '}</div></div>
+        <div className="card"><div className="k">If they win out</div><div className="v">{sc ? pct(sc.winout.make) : '…'}</div><div className="r">{sc ? (sc.left ? `${pct(sc.pWin)} to win their last ${sc.left === 1 ? 'game' : sc.left} · title game included if they get there` : 'no games left to lose') : ' '}</div></div>
         <div className="card"><div className="k">If they lose one more</div><div className="v">{sc ? (sc.loseone ? pct(sc.loseone.make) : '–') : '…'}</div><div className="r">{sc?.loseone ? 'one loss in the regular season' : sc ? 'regular season is done' : ' '}</div></div>
       </div>
 
       <section className="hsec">
         <h2>How far they go</h2>
         <div className="po-stages">{stages.map(([name, v, note]) => (
-          <div key={name} className="po-stage"><span><b>{name}</b>{note ? <span className="muted sm"> {note}</span> : null}</span><span className="po-stage-bar"><i style={{ width: `${Math.max(1, v * 100)}%` }} /></span><Pct v={v} className="num" /></div>
+          <div key={name} className="po-stage"><span><b>{name}</b>{note ? <span className="muted sm" style={{ display: 'block' }}>{note}</span> : null}</span><span className="po-stage-bar"><i style={{ width: `${Math.max(1, v * 100)}%` }} /></span><Pct v={v} className="num" /></div>
         ))}</div>
       </section>
 

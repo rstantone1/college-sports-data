@@ -35,7 +35,7 @@ function useFlip(order: string) {
 }
 
 export const Logo = ({ src, size = 28 }: { src: string | null; size?: number }) => (src ? <img src={src} alt="" width={size} height={size} loading="lazy" style={{ objectFit: 'contain', flex: '0 0 auto' }} /> : <span style={{ width: size, height: size, flex: '0 0 auto' }} />);
-const delta = (d: number) => (Math.abs(d) < 0.005 ? null : <span className={`po-delta ${d > 0 ? 'up' : 'dn'}`}>{d > 0 ? '▲' : '▼'}{Math.abs(Math.round(d * 100))}</span>);
+const delta = (d: number) => (Math.abs(d) < 0.01 ? null : <span className={`po-delta ${d > 0 ? 'up' : 'dn'}`}>{d > 0 ? '▲' : '▼'}{Math.abs(Math.round(d * 100))}</span>);
 export const gameLabel = (p: Pack, g: PGame) => `${g.a >= 0 ? p.teams[g.a].name : 'FCS opponent'} ${g.neutral ? 'vs' : 'at'} ${g.h >= 0 ? p.teams[g.h].name : 'FCS opponent'}`;
 export function pickText(p: Pack, key: string, win: number): string {
   if (key.startsWith('t:')) return `${p.teams[win].name} wins the ${p.confs[Number(key.slice(2))].name} title`;
@@ -225,8 +225,7 @@ export function PlayoffPage() {
     <div className="po">
       <Back />
       <h1>Playoff picture</h1>
-      <p className="sub">Every team's chance to make the {p.format.size}-team playoff, from 6,000 plays of the rest of the season. {left ? `${left} games to go before the field is set.` : 'The regular season is done.'}
-        {' '}{s.live ? <span className="po-live">{s.live} live now</span> : null} <span className="muted">Updates the moment a game ends.</span></p>
+      <p className="sub" style={{ marginBottom: 14 }}>Each team's chance to make the {p.format.size}-team field. {left ? 'It moves every time a game ends.' : 'The regular season is done.'}{s.live ? <> <span className="po-live">{s.live} live now</span></> : null}</p>
       <ScenarioBar s={s} />
       <div className="po-tabs" role="tablist">
         {([['board', 'The board'], ['play', 'Play it out'], ['bracket', 'Bracket']] as const).map(([id, label]) => <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? 'on' : ''} onClick={() => setTab(id)}>{label}</button>)}
