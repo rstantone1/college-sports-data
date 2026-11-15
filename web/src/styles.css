@@ -470,3 +470,13 @@ button.sheet-row{border:0;font:inherit;font-weight:600;font-size:17px;color:var(
 .po-strip span.out::before{background:var(--hot)}
 .po-path-sub{display:flex;justify-content:space-between;gap:12px;border-top:1px solid var(--rule);margin-top:8px;padding-top:8px;font-size:15px}
 .po-path-sub b{white-space:nowrap}
+.po-sharebtn{border:1px solid var(--rule);background:var(--panel);color:var(--ink);font:inherit;font-weight:800;font-size:15px;padding:10px 16px;border-radius:10px;cursor:pointer}
+.po-strip.s16{grid-template-columns:repeat(16,1fr) 1.8fr;gap:2px}
+.po-strip.s16 span{font-size:13px;padding:6px 0}
+.po-yours{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:8px;margin:0 0 14px}
+.po-your{background:var(--panel);border:1px solid var(--rule);border-radius:var(--r);padding:12px 14px;display:block}
+.po-your-top{display:flex;align-items:center;gap:10px}
+.po-your-top b{font-size:18px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.po-your-top .num{font-size:30px;font-weight:800;font-family:var(--display)}
+.po-your ul{list-style:none;margin:8px 0 0;padding:8px 0 0;border-top:1px solid var(--rule);display:flex;flex-direction:column;gap:5px;font-size:15px}
+.po-your li{display:flex;justify-content:space-between;gap:10px}

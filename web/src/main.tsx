@@ -16,7 +16,7 @@ import { RecordPage } from './pages/Record';
 import { BallotPage } from './pages/Ballot';
 import { ConferencePage } from './pages/Conference';
 import { AboutPage } from './pages/About';
-import { TournamentPage } from './pages/Tournament';
+import { BracketPage, BracketTeamPage } from './pages/Bracket';
 import { TransfersPage } from './pages/Transfers';
 import { LeadersPage } from './pages/Leaders';
 import { PlayerPage } from './pages/Player';
@@ -41,7 +41,8 @@ createRoot(document.getElementById('root')!).render(
         <Route path="/:sport/:season/scores" element={<Shell><TodayPage /></Shell>} />
         <Route path="/:sport/:season/matchup" element={<Shell><MatchupPage /></Shell>} />
         <Route path="/:sport/:season/ballot" element={<Shell><BallotPage /></Shell>} />
-        <Route path="/:sport/:season/tournament" element={<Shell><TournamentPage /></Shell>} />
+        <Route path="/:sport/:season/tournament" element={<Shell><BracketPage /></Shell>} />
+        <Route path="/:sport/:season/tournament/:teamId" element={<Shell><BracketTeamPage /></Shell>} />
         <Route path="/:sport/:season/playoff" element={<Shell><PlayoffPage /></Shell>} />
         <Route path="/:sport/:season/playoff/:teamId" element={<Shell><PlayoffTeamPage /></Shell>} />
         <Route path="/:sport/:season/transfers" element={<Shell><TransfersPage /></Shell>} />

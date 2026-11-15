@@ -6,6 +6,7 @@ import { pct } from '../model';
 import { pick, setLocks, teamScenario, drawItUp, seedPaths } from '../playoff/store';
 import type { DrawStep, SeedPath, SeedLine } from '../playoff/worker';
 import { Pct, Logo, RippleToast, ScenarioBar, usePlayoffData, pickText } from './Playoff';
+import { ShareButton, type Card } from '../components/ShareCard';
 
 const ord = (n: number) => `${n}${n % 10 === 1 && n % 100 !== 11 ? 'st' : n % 10 === 2 && n % 100 !== 12 ? 'nd' : n % 10 === 3 && n % 100 !== 13 ? 'rd' : 'th'}`;
 const pts = (d: number) => `${d > 0 ? '+' : '−'}${Math.abs(Math.round(d * 100))}`;
@@ -71,6 +72,7 @@ export function PlayoffTeamPage() {
         <div className="muted">{make >= 0.005 && bestSeed > 0 ? `Most often the No. ${bestSeed} seed` : 'Not in any of our 6,000 seasons'}{' · '}Committee {t.cfp ? `#${t.cfp}` : 'unranked'} · résumé {ord(resumeRank)} · our power rating {ord(t.ourRank)}</div>
       </div>
 
+      <div style={{ margin: '0 0 12px' }}><ShareButton card={(): Card => ({ kind: 'team', title: t.name, logo: t.logo, sub: `${t.w}-${t.l}${t.cfp ? ` · CFP #${t.cfp}` : ''}`, big: pct(make), bigLabel: 'to make the College Football Playoff', lines: [...(sc ? [`Win out: ${pct(sc.winout.make)}${sc.loseone ? ` · Lose one more: ${pct(sc.loseone.make)}` : ''}`] : []), make >= 0.005 && bestSeed > 0 ? `Most often the No. ${bestSeed} seed · ${pct(cur.bye[ti])} for a bye` : 'Outside the field in our simulations', ...(sp?.rows[0] && sp.games.length ? [`${sp.rows[0].wins.every(Boolean) ? 'Win every game left' : 'Best case'}: ${sp.rows[0].all.make < 0.02 ? 'still out' : `No. ${sp.rows[0].all.mode} seed`}`] : [])] })} /></div>
       <div className="cards po-if">
         <div className="card"><div className="k">If they win out</div><div className="v">{sc ? pct(sc.winout.make) : '…'}</div><div className="r">{sc ? (sc.left ? `${pct(sc.pWin)} to win their last ${sc.left === 1 ? 'game' : sc.left} · title game included if they get there` : 'no games left to lose') : ' '}</div></div>
         <div className="card"><div className="k">If they lose one more</div><div className="v">{sc ? (sc.loseone ? pct(sc.loseone.make) : '–') : '…'}</div><div className="r">{sc?.loseone ? 'one loss in the regular season' : sc ? 'regular season is done' : ' '}</div></div>

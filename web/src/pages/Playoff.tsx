@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useCtx } from '../hooks';
+import { useCtx, useFollows } from '../hooks';
+import { ShareButton, type Card } from '../components/ShareCard';
 import { Back, Loading, ErrorBox } from '../components/Shell';
 import { pct } from '../model';
 import { usePlayoff, init, hydrateLocks, pick, setLocks, reset, setChaos, clearRipple, shareUrl, randomSeason, type State } from '../playoff/store';
@@ -23,7 +24,7 @@ export function Pct({ v, className }: { v: number; className?: string }) {
 }
 
 // Rows slide to their new place when the order changes.
-function useFlip(order: string) {
+export function useFlip(order: string) {
   const els = useRef(new Map<number, HTMLElement>()), tops = useRef(new Map<number, number>());
   useLayoutEffect(() => {
     const now = new Map<number, number>();
@@ -78,6 +79,7 @@ function Board({ s, base }: { s: State; base: string }) {
         })}
       </div>
       <button className="po-more" onClick={() => setAll(!all)}>{all ? 'Show only teams with a chance' : `Show all ${p.teams.length} teams`}</button>
+      <div style={{ marginTop: 10 }}><ShareButton label="Share this board" card={(): Card => ({ kind: 'board', title: changed ? 'My playoff scenario' : 'Playoff picture', sub: changed ? Object.entries(s.locks).slice(0, 3).map(([k, v]) => pickText(p, k, v)).join(' · ') + (Object.keys(s.locks).length > 3 ? ' and more' : '') : `Chance to make the ${p.format.size}-team field`, rows: order.slice(0, 12).map((i) => ({ name: p.teams[i].name, logo: p.teams[i].logo, value: pct(val(cur, metric, i)), frac: val(cur, metric, i) })) })} /></div>
     </div>
   );
 }
@@ -196,6 +198,32 @@ export function RippleToast({ s }: { s: State }) {
   );
 }
 
+// What each team's chances were the last time this person looked, kept on their device.
+const SEEN = 'po:seen';
+function useSeen(s: State) {
+  const [seen] = useState<Record<string, { v: number; t: number }>>(() => { try { return JSON.parse(localStorage.getItem(SEEN) ?? '{}'); } catch { return {}; } });
+  useEffect(() => { if (!s.pack || !s.base) return; const t = setTimeout(() => { try { const now: Record<string, { v: number; t: number }> = {}; s.pack!.teams.forEach((tm, i) => { if (s.base!.make[i] > 0.002) now[tm.id] = { v: s.base!.make[i], t: Date.now() }; }); localStorage.setItem(SEEN, JSON.stringify(now)); } catch { /* unavailable */ } }, 20000); return () => clearTimeout(t); }, [s.pack, s.base]);
+  return seen;
+}
+
+// The followed teams' chances, what changed since last time, and the games on in the next day and a half that matter to them.
+function YourTeams({ s, base }: { s: State; base: string }) {
+  const { list } = useFollows(); const seen = useSeen(s); const p = s.pack!, r = s.base!, lv = r.lev;
+  const mine = list.filter((f) => f.sport === 'cfb').map((f) => p.teams.findIndex((t) => t.id === f.team_id)).filter((i) => i >= 0);
+  if (!mine.length) return null; const soon = Date.now() + 36 * 3600e3;
+  return (
+    <div className="po-yours">{mine.map((ti) => { const t = p.teams[ti], was = seen[t.id], d = was && Date.now() - was.t > 3600e3 ? r.make[ti] - was.v : 0; const k = lv ? lv.teams.indexOf(ti) : -1;
+      const games = lv && k >= 0 ? lv.games.map((gi, n) => ({ g: p.games[gi], d: lv.d[n * lv.teams.length + k] })).filter((x) => x.g.date < soon && Math.abs(x.d) >= 0.025 && x.g.h >= 0 && x.g.a >= 0).sort((a, b) => Math.abs(b.d) - Math.abs(a.d)).slice(0, 3) : [];
+      return (
+        <Link key={t.id} to={`${base}/playoff/${t.id}${location.search}`} className="po-your">
+          <div className="po-your-top"><Logo src={t.logo} size={36} /><b>{t.name}</b>{Math.abs(d) >= 0.01 && <span className={`po-delta ${d > 0 ? 'up' : 'dn'}`}>{d > 0 ? '▲' : '▼'}{Math.abs(Math.round(d * 100))} since {new Date(was!.t).toLocaleDateString(undefined, { weekday: 'short' })}</span>}<span className="num">{pct(r.make[ti])}</span></div>
+          {games.length > 0 ? <ul>{games.map(({ g, d }) => { const win = d > 0 ? g.h : g.a; return <li key={g.key}><span>{pickText(p, g.key, win)}{g.live ? ' · live' : ''}</span><b className="up">+{Math.abs(Math.round(d * 100))}</b></li>; })}</ul>
+            : <ul><li><span className="muted">{r.make[ti] > 0.99 ? 'In from almost anywhere.' : r.make[ti] < 0.005 ? 'Out of the picture.' : 'Nothing in the next day moves their chances much.'}</span></li></ul>}
+        </Link>
+      ); })}</div>
+  );
+}
+
 export function ScenarioBar({ s }: { s: State }) {
   const n = Object.keys(s.locks).length; const [copied, setCopied] = useState(false);
   if (!n && s.chaos === 1) return null;
@@ -227,6 +255,7 @@ export function PlayoffPage() {
       <h1>Playoff picture</h1>
       <p className="sub" style={{ marginBottom: 14 }}>Each team's chance to make the {p.format.size}-team field. {left ? 'It moves every time a game ends.' : 'The regular season is done.'}{s.live ? <> <span className="po-live">{s.live} live now</span></> : null}</p>
       <ScenarioBar s={s} />
+      <YourTeams s={s} base={base} />
       <div className="po-tabs" role="tablist">
         {([['board', 'The board'], ['play', 'Play it out'], ['bracket', 'Bracket']] as const).map(([id, label]) => <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? 'on' : ''} onClick={() => setTab(id)}>{label}</button>)}
       </div>
