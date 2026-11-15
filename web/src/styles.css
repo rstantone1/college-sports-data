@@ -488,3 +488,7 @@ button.sheet-row{border:0;font:inherit;font-weight:600;font-size:17px;color:var(
 .chip.static{min-height:0;padding:5px 11px;font-size:14px}
 .hub-head a{padding:10px 0 10px 12px;font-size:15px}
 @media(max-width:640px){ .tbl td{padding-top:11px;padding-bottom:11px} .box td,.box th{padding-top:10px;padding-bottom:10px} .sched a,.gl a{min-height:40px} }
+main table a{display:inline-flex;align-items:center;min-height:40px}
+.recordpill{min-height:40px;display:inline-flex;align-items:center}
+.leader-row{min-height:40px}
+.recordpill{gap:5px}
