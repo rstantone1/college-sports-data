@@ -81,7 +81,7 @@ async function main() {
         try { await gradeBets(s, y); } catch (e) { console.warn('grading skipped:', (e as Error).message); }
         try { await flagBets(s, y, r.rated); } catch (e) { console.warn('bets skipped:', (e as Error).message); }
         // Best prices after our own picks, so each one can say whether our model agrees.
-        if (process.env.ODDS_API_KEY && (oddsDue(s.id) || process.env.ODDS_FORCE === '1')) { try { await refreshOddsApi(s, y); } catch (e) { console.warn('odds api skipped:', (e as Error).message); } }
+        if (process.env.ODDS_API_KEY && (process.env.ODDS_FORCE === '1' || await oddsDue(s.id))) { try { await refreshOddsApi(s, y); } catch (e) { console.warn('odds api skipped:', (e as Error).message); } }
         try { await writeProjections(s, y); } catch (e) { console.warn('projections skipped:', (e as Error).message); }
       }
       if (process.env.SKIP_ROLLUPS !== '1') { try { await refreshRollups(); } catch (e) { console.warn('rollup refresh skipped:', (e as Error).message); } }

@@ -98,6 +98,9 @@ export async function flagBets(s: SportConfig, season: number, rated: Rated) {
       const b = bandsFor.find((x) => Math.abs(edge) >= x.lo && Math.abs(edge) < x.hi);
       const leanAt = LEAN[s.id]?.[market] ?? 99;
       if (!b && Math.abs(edge) < leanAt) return;
+      // Women's picks wait until both teams have played four games: before that our number leans on last season,
+      // and those early leans went 7-24 on totals in November 2026.
+      if (s.id === 'wbb' && !warm) return;
       const tier = b && warm ? tierFor(b.p) : 'lean';
       const mv = (MOVE_PER_PT[s.id] ?? 0) * Math.abs(edge);
       if (mv >= 0.4) reasons.push({ key: 'expect', text: `Line usually moves our way about ${mv.toFixed(1)} by game time` });
@@ -179,7 +182,7 @@ export async function replayBets(s: SportConfig, season: number) {
       if (Math.abs(edge) >= 0.5) {
         const x = side * (hs - as + line);
         const b = bandOf(bands.spread, Math.abs(edge));
-        out.push({ market: 'spread', side: side > 0 ? 'home' : 'away', line, our: m, edge: Math.abs(edge), p: b?.p ?? null, tier: b ? (warm ? tierFor(b.p) : 'lean') : Math.abs(edge) >= (LEAN[s.id]?.spread ?? 99) ? 'lean' : null,
+        out.push({ market: 'spread', side: side > 0 ? 'home' : 'away', line, our: m, edge: Math.abs(edge), p: b?.p ?? null, tier: s.id === 'wbb' && !warm ? null : b ? (warm ? tierFor(b.p) : 'lean') : Math.abs(edge) >= (LEAN[s.id]?.spread ?? 99) ? 'lean' : null,
           close, clv: useOpen && close != null ? (side > 0 ? line - close : close - line) : null, result: x > 0 ? 'win' : x < 0 ? 'loss' : 'push', id: r.id, made,
           reasons: [{ key: 'edge', text: `We were ${Math.abs(edge).toFixed(1)} pts off the line` }] });
       }
@@ -190,7 +193,7 @@ export async function replayBets(s: SportConfig, season: number) {
       if (Math.abs(edge) >= 0.5) {
         const x = side * (hs + as - line);
         const b = bandOf(bands.total, Math.abs(edge));
-        out.push({ market: 'total', side: side > 0 ? 'over' : 'under', line, our: total, edge: Math.abs(edge), p: b?.p ?? null, tier: b ? (warm ? tierFor(b.p) : 'lean') : Math.abs(edge) >= (LEAN[s.id]?.total ?? 99) ? 'lean' : null,
+        out.push({ market: 'total', side: side > 0 ? 'over' : 'under', line, our: total, edge: Math.abs(edge), p: b?.p ?? null, tier: s.id === 'wbb' && !warm ? null : b ? (warm ? tierFor(b.p) : 'lean') : Math.abs(edge) >= (LEAN[s.id]?.total ?? 99) ? 'lean' : null,
           close, clv: useOpen && close != null ? (side > 0 ? close - line : line - close) : null, result: x > 0 ? 'win' : x < 0 ? 'loss' : 'push', id: r.id, made,
           reasons: [{ key: 'edge', text: `Our total was ${Math.abs(edge).toFixed(1)} ${side > 0 ? 'above' : 'below'} the line` }] });
       }

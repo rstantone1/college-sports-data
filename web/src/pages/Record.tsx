@@ -6,43 +6,35 @@ import { Back, Loading, ErrorBox } from '../components/Shell';
 import { pct } from '../model';
 import { SPORTS, sportMeta } from '../sports';
 
-interface Row {
-  sport_id: string; season_year: number; game_id: number; kind: string; made_at: string; home_prob: number; margin: number; estimated: boolean;
-  games: { home_score: number | null; away_score: number | null; completed: boolean; start_time: string; home_team_id: number; away_team_id: number } | null;
-}
+// One row per sport, kind (live or replayed), confidence range and scored-or-pending, added up in the database.
+interface Row { sport_id: string; kind: string; scored: boolean; bin: number; n: number; won: number | null; said: number | null; err: number | null; first_made: string }
+const RANGES = [[0.5, 0.6], [0.6, 0.7], [0.7, 0.8], [0.8, 0.9], [0.9, 0.95], [0.95, 1.01]];
 
 // Every pick we made, scored against what happened. Live picks are written before tip and never edited.
 // "Replayed" picks come from running the model week by week over a past season it had not seen.
 export function RecordPage() {
   const [kindPick, setKind] = useState<'live' | 'replay' | null>(null);
   const [sport, setSport] = useState<string>('all');
-  const data = useAsync(() => restAll<Row>(`predictions?select=sport_id,season_year,game_id,kind,made_at,home_prob,margin,estimated,games(home_score,away_score,completed,start_time,home_team_id,away_team_id)&estimated=eq.false&order=made_at.desc`), []);
+  const data = useAsync(() => restAll<Row>('v_record_bins?select=*'), []);
 
   if (data.loading) return <Loading />;
   if (data.error) return <ErrorBox msg={data.error} />;
-  const all = (data.data ?? []).map((r) => ({ ...r, home_prob: Number(r.home_prob), margin: Number(r.margin) }));
+  const all = data.data ?? [];
   const kinds = new Set(all.map((r) => r.kind));
   // Until this season's picks have results, open on last season's replay so the page is never empty.
-  const liveScored = all.some((r) => r.kind === 'live' && r.games?.completed);
+  const liveScored = all.some((r) => r.kind === 'live' && r.scored);
   const kind = kindPick ?? (liveScored || !kinds.has('replay') ? 'live' : 'replay');
   const rows = all.filter((r) => r.kind === kind && (sport === 'all' || r.sport_id === sport));
-  const scored = rows.filter((r) => r.games?.completed && r.games.home_score != null && r.games.home_score !== r.games.away_score);
-  const pending = rows.length - scored.length;
-
-  const right = scored.filter((r) => (r.home_prob >= 0.5) === (r.games!.home_score! > r.games!.away_score!)).length;
-  const mae = scored.length ? scored.reduce((a, r) => a + Math.abs(r.margin - (r.games!.home_score! - r.games!.away_score!)), 0) / scored.length : 0;
-  const bins = [[0.5, 0.6], [0.6, 0.7], [0.7, 0.8], [0.8, 0.9], [0.9, 0.95], [0.95, 1.01]].map(([lo, hi]) => {
-    const inBin = scored.filter((r) => { const f = Math.max(r.home_prob, 1 - r.home_prob); return f >= lo && f < hi; });
-    const won = inBin.filter((r) => (r.home_prob >= 0.5) === (r.games!.home_score! > r.games!.away_score!)).length;
-    const said = inBin.length ? inBin.reduce((a, r) => a + Math.max(r.home_prob, 1 - r.home_prob), 0) / inBin.length : 0;
-    return { lo, hi, n: inBin.length, won: inBin.length ? won / inBin.length : 0, said };
-  });
-  const bySport = Object.keys(SPORTS).map((s) => {
-    const x = scored.filter((r) => r.sport_id === s);
-    const w = x.filter((r) => (r.home_prob >= 0.5) === (r.games!.home_score! > r.games!.away_score!)).length;
-    return { s, n: x.length, w };
-  }).filter((x) => x.n > 0);
-  const first = scored.length ? scored[scored.length - 1].made_at : null;
+  const done = rows.filter((r) => r.scored);
+  const sum = (rs: Row[], f: (r: Row) => number) => rs.reduce((a, r) => a + f(r), 0);
+  const scored = { length: sum(done, (r) => r.n) };
+  const pending = sum(rows.filter((r) => !r.scored), (r) => r.n);
+  const right = sum(done, (r) => r.won ?? 0);
+  const mae = scored.length ? sum(done, (r) => r.err ?? 0) / scored.length : 0;
+  const bins = RANGES.map(([lo, hi], b) => { const x = done.filter((r) => r.bin === b); const n = sum(x, (r) => r.n);
+    return { lo, hi, n, won: n ? sum(x, (r) => r.won ?? 0) / n : 0, said: n ? sum(x, (r) => r.said ?? 0) / n : 0 }; });
+  const bySport = Object.keys(SPORTS).map((s) => { const x = done.filter((r) => r.sport_id === s); return { s, n: sum(x, (r) => r.n), w: sum(x, (r) => r.won ?? 0) }; }).filter((x) => x.n > 0);
+  const first = done.length ? done.map((r) => r.first_made).sort()[0] : null;
   const inWords = (p: number) => { const n = Math.round(1 / Math.max(0.01, 1 - p)); return n >= 2 && n <= 20 ? `about ${n - 1} in ${n}` : ''; };
 
   return (

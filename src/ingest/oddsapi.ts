@@ -67,12 +67,17 @@ export async function oddsCredits(): Promise<number | null> {
   return Number(r.headers.get('x-requests-remaining') ?? NaN);
 }
 
-// Whether the scheduled job should pull this sport now. The daily job runs at :15 past every third UTC hour.
-export function oddsDue(sportId: string, d = new Date()) {
+// Whether the scheduled job should pull this sport now: inside the day's window and not already pulled today.
+// The refresh job takes anywhere from 10 to 60 minutes to reach this step, so a single exact hour kept missing.
+export async function oddsDue(sportId: string, d = new Date()): Promise<boolean> {
   if (!SPORT_KEY[sportId]) return false;
   const h = d.getUTCHours(), dow = d.getUTCDay();
-  if (sportId === 'cfb') return h === 15 && dow >= 4 && dow <= 6;   // Thu-Sat morning, before kickoffs
-  return h === 18;                                                   // hoops: midday Central, before evening tips
+  const inWindow = sportId === 'cfb' ? h >= 15 && h < 21 && dow >= 4 && dow <= 6   // Thu-Sat, from morning Central
+    : h >= 18 && h < 24;                                                            // hoops: midday Central on, before evening tips
+  if (!inWindow) return false;
+  const recent = await q<{ n: string }>(`select count(*) n from line_snapshots l join games g on g.id = l.game_id where l.source='oddsapi' and g.sport_id=$1 and l.taken_at > now() - interval '12 hours'`, [sportId]);
+  const pulled = await q<{ n: string }>(`select count(*) n from game_lines l join games g on g.id = l.game_id where l.source='oddsapi' and g.sport_id=$1 and l.updated_at > now() - interval '12 hours'`, [sportId]);
+  return Number(recent[0]?.n ?? 0) === 0 && Number(pulled[0]?.n ?? 0) === 0;
 }
 
 export async function refreshOddsApi(s: SportConfig, season: number) {
