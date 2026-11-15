@@ -4,6 +4,7 @@ import { previousRanks } from '../api';
 import { useAsync, useCtx, useRatings, visibleColor } from '../hooks';
 import { Loading, ErrorBox, TeamCell } from '../components/Shell';
 import { f1, sign, perGame } from '../model';
+import { Top25, hasTop25 } from '../components/Top25';
 
 type Key = 'rank' | 'adj_em' | 'adj_off' | 'adj_def' | 'tempo' | 'games_played';
 
@@ -16,6 +17,7 @@ export function RatingsPage() {
   const [sort, setSort] = useState<{ k: Key; dir: 1 | -1 }>({ k: 'rank', dir: 1 });
   const [adv, setAdv] = useState(false);
   const [showKey, setShowKey] = useState(false);
+  const [view, setView] = useState<'top' | 'power'>('top');
   const nav = useNavigate();
 
   const confs = useMemo(() => {
@@ -53,9 +55,18 @@ export function RatingsPage() {
   const dp = adv && !meta.hoops ? 2 : 1;
   const ex = data[0], exPg = perGame(ex, sport);
 
+  const tabs = hasTop25(sport) ? (
+    <div className="chips" style={{ marginBottom: 12 }}>
+      <button className={`chip ${view === 'top' ? 'on' : ''}`} onClick={() => setView('top')}>Top 25</button>
+      <button className={`chip ${view === 'power' ? 'on' : ''}`} onClick={() => setView('power')}>Power ratings</button>
+    </div>
+  ) : null;
+  if (tabs && view === 'top') return <><h1>{meta.long} Top 25</h1>{tabs}<Top25 /></>;
+
   return (
     <>
-      <h1>{meta.long} ratings</h1>
+      <h1>{meta.long} power ratings</h1>
+      {tabs}
       <p className="sub">
         Every team in the country, best to worst. The number is how many {meta.pointWord} a team would beat an average team by, after accounting for who they've played.
         Updated {asOf ? new Date(asOf + 'T12:00:00').toLocaleDateString(undefined, { month: 'long', day: 'numeric' }) : ''}.
