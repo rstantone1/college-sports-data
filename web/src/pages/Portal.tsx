@@ -9,7 +9,9 @@ import { useBracket, initBracket, ratingWhatIf, type WhatIf } from '../bracket/s
 
 // How much one unit of last season's production has been worth to next season's team rating (points per 100
 // possessions), fitted on four seasons of roster turnover for each sport. Transfers in are scaled by the old team's level.
-const COEF: Record<string, { in: number; lost: number }> = { mbb: { in: 0.0057, lost: 0.0043 }, wbb: { in: 0.0075, lost: 0.0072 } };
+// Additions have diminishing returns (there are only so many minutes): the tenth transfer adds less than the first.
+const COEF: Record<string, { in: number; in2: number; lost: number }> = { mbb: { in: 0.0085, in2: 0.0012, lost: 0.0044 }, wbb: { in: 0.0123, in2: 0.0028, lost: 0.0071 } };
+const addedRating = (c: { in: number; in2: number }, x: number) => { const top = (c.in / (2 * c.in2)) * 1000, v = Math.min(x, top); return c.in * v - (c.in2 * v * v) / 1000; };
 interface TeamRow { team_id: number; kept: number; lost_moved: number; lost_gone: number; added: number; n_kept: number; n_out: number; n_gone: number; n_in: number }
 interface PlayerRow { player_id: number; display_name: string; from_team_id: number; to_team_id: number | null; status: 'kept' | 'moved' | 'gone'; position: string | null; class_year: string | null; gp: number | null; pts: number | null; reb: number | null; ast: number | null; value: number; value_adj: number }
 const signed = (v: number) => `${v >= 0.05 ? '+' : v <= -0.05 ? '−' : ''}${Math.abs(v).toFixed(1)}`;
@@ -20,7 +22,7 @@ export function usePortal() {
   const { sport, season, meta } = useCtx();
   const t = useAsync(() => (COEF[sport] ? restAll<TeamRow>(`v_portal_teams?sport_id=eq.${sport}&season_year=eq.${season}`) : Promise.resolve([])), [sport, season]);
   const c = COEF[sport], per = meta.typicalUnits / 100;
-  const rows = useMemo(() => (t.data ?? []).map((r) => { const add = c.in * Number(r.added) * per, lose = c.lost * Number(r.lost_moved) * per; return { ...r, add, lose, net: add - lose }; }), [t.data, sport]);
+  const rows = useMemo(() => (t.data ?? []).map((r) => { const add = addedRating(c, Number(r.added)) * per, lose = c.lost * Number(r.lost_moved) * per; return { ...r, add, lose, net: add - lose }; }), [t.data, sport]);
   return { ...t, rows, per, c };
 }
 
@@ -123,7 +125,7 @@ export function PortalTeamPage() {
       )}
 
       <h2>Came in</h2>
-      <div className="panel">{came.length ? <ul className="pt-list pt-players">{came.map((p) => line(p, p.from_team_id, P.c.in * Number(p.value_adj) * P.per, 'in'))}</ul> : <p className="muted">No transfers in with a game on record yet.</p>}</div>
+      <div className="panel">{came.length ? <ul className="pt-list pt-players">{came.map((p) => line(p, p.from_team_id, row && Number(row.added) > 0 ? (row.add * Number(p.value_adj)) / Number(row.added) : 0, 'in'))}</ul> : <p className="muted">No transfers in with a game on record yet.</p>}</div>
       <h2>Left for another school</h2>
       <div className="panel">{left.length ? <ul className="pt-list pt-players">{left.map((p) => line(p, p.to_team_id, P.c.lost * Number(p.value) * P.per, 'out'))}</ul> : <p className="muted">Nobody from last season's team has played for another school this season.</p>}</div>
       {gone.length > 0 && (<>
