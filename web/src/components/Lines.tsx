@@ -19,7 +19,7 @@ export function betText(b: Pick<Bet, 'market' | 'side' | 'line'>, homeName: stri
   return b.side === 'home' ? `${homeName} ${sideNum(b.line)}` : `${awayName} ${sideNum(-b.line)}`;
 }
 export const TIER: Record<string, { label: string; cls: string }> = {
-  best: { label: 'Best bet', cls: 'tier best' }, strong: { label: 'Strong', cls: 'tier strong' }, lean: { label: 'Lean', cls: 'tier lean' },
+  best: { label: 'Best bet', cls: 'tier best' }, strong: { label: 'Strong', cls: 'tier strong' }, lean: { label: 'Model gap', cls: 'tier lean' },
   value: { label: 'Best price', cls: 'tier value' },
 };
 // American odds as written: +120, −110.

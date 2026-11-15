@@ -119,7 +119,7 @@ export function HomePage() {
             <section className="hsec">
               <h2>Best games today</h2>
               <p className="muted sm hsub">The best teams in the closest games, across every sport playing today.</p>
-              <div className="games">{watch.slice(0, 6).map((w) => <div key={w.key} className="tagged"><span className="tag">{sportMeta(w.s).short}</span>{w.el}</div>)}</div>
+              <div className="games">{watch.slice(0, 4).map((w) => <div key={w.key} className="tagged"><span className="tag">{sportMeta(w.s).short}</span>{w.el}</div>)}</div>
             </section>
           )}
 
@@ -162,7 +162,7 @@ export function HomePage() {
           )}
 
           <section className="hsec">
-            <h2>Top 10 right now</h2>
+            <h2>Top 5 right now</h2>
             <div className="grid tops">{(data.data ?? []).map((d) => <TopTen key={d.s} d={d} />)}</div>
           </section>
 
@@ -173,6 +173,7 @@ export function HomePage() {
       <section className="hsec">
         <h2>Explore</h2>
         <div className="explore">
+          {live.includes('cfb') && <Link to={`/cfb/${SPORTS.cfb.seasons[0].year}/playoff`} className="panel"><b>Playoff picture</b><span className="muted sm">Every team's chance to make the field. Pick games and watch it move.</span></Link>}
           <Link to="/record" className="panel"><b>How good are our picks?</b><span className="muted sm">Every pick we've made, and how often we were right.</span></Link>
           <Link to={`/mbb/${SPORTS.mbb.seasons[0].year}/matchup`} className="panel"><b>Matchup machine</b><span className="muted sm">Any two teams, any court: who wins and by how much.</span></Link>
           <Link to={`/mbb/${SPORTS.mbb.seasons[0].year}/transfers`} className="panel"><b>Transfer tracker</b><span className="muted sm">Every player who switched schools, and what they did before.</span></Link>
@@ -195,7 +196,7 @@ function TopTen({ d }: { d: SportDay }) {
       </div>
       <table className="tbl">
         <tbody>
-          {d.rs.slice(0, 10).map((r) => {
+          {d.rs.slice(0, 5).map((r) => {
             const was = d.before.get(r.team_id); const mv = was ? was - r.rank : 0;
             return (
               <tr key={r.team_id}>
