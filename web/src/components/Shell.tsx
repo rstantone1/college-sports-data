@@ -28,6 +28,7 @@ export function Shell({ children }: { children: ReactNode }) {
     { to: base, t: 'Overview', end: true }, { to: `${base}/rankings`, t: 'Rankings' }, { to: `${base}/today`, t: 'Scores' },
     { to: `${base}/stats`, t: 'Stats' },
     ...(meta.tourney ? [{ to: `${base}/tournament`, t: 'Tournament' }] : []),
+    ...(meta.id === 'cfb' ? [{ to: `${base}/playoff`, t: 'Playoff' }] : []),
     ...(meta.hoops ? [{ to: `${base}/transfers`, t: 'Transfers' }] : []),
     { to: `${base}/matchup`, t: 'Matchup' }, { to: `${base}/ballot`, t: 'Your Top 25' },
   ];

@@ -12,6 +12,7 @@ import { exportPlayerPack } from './export/playerPack.js';
 import { flagBets, gradeBets } from './bets.js';
 import { writeProjections } from './props.js';
 import { refreshOddsApi, oddsDue } from './ingest/oddsapi.js';
+import { ingestCommittee } from './ingest/committee.js';
 import { ingestNcaaGames, ingestNcaaBox } from './ingest/ncaa.js';
 import { ensureSport } from './ingest/teams.js';
 import type { SportConfig } from './sports.js';
@@ -44,6 +45,9 @@ async function main() {
     case 'lines:backfill': { const s = sport(args.sport); await backfillLines(s, season(s.id), { out: args.out, workers: args.workers ? Number(args.workers) : undefined }); break; }
     case 'lines:refresh': { const s = sport(args.sport); await refreshLines(s, season(s.id)); break; }
     case 'bets:replay': { const s = sport(args.sport); const { replayBets } = await import('./bets.js'); await replayBets(s, Number(args.season)); break; }
+    // Quick game-day refresh: scores for the last couple of days and the committee's latest ranking. Minutes, not an hour.
+    case 'live': { const s = sport(args.sport); const y = season(s.id); await ingestGames(s, y, { onlyRecentDays: 2, refreshDays: 3 }); if (s.id === 'cfb') await ingestCommittee(y); break; }
+    case 'ingest:committee': await ingestCommittee(season('cfb')); break;
     case 'lines:shop': { const s = sport(args.sport); await refreshOddsApi(s, season(s.id)); break; }
     case 'props': { const s = sport(args.sport); await writeProjections(s, season(s.id)); break; }
     case 'export:players': { const s = sport(args.sport); await exportPlayerPack(s, Number(args.from), Number(args.to), args.out ?? `out/players-${s.id}.json.gz`); break; }
@@ -59,6 +63,7 @@ async function main() {
       await boxFor(s, y, { plays: args.plays === '1' });
       // Official rosters (height, class, hometown; and players who haven't appeared in a box score yet). ESPN sports only.
       if (!isNcaa(s)) { try { await ingestRosters(s, y); } catch (e) { console.warn('rosters skipped:', (e as Error).message); } }
+      if (s.id === 'cfb') { try { await ingestCommittee(y); } catch (e) { console.warn('committee rankings skipped:', (e as Error).message); } }
       const r = await computeRatings(s, y);
       // Off-season: stamp ratings with the last game date instead of today, so history doesn't fill with copies.
       const lastGame = (await q<{ d: string | null }>(`select max(start_time)::date::text d from games where sport_id=$1 and season_year=$2 and completed`, [s.id, y]))[0]?.d;

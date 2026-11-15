@@ -1,0 +1,34 @@
+name: Game-day scores
+
+# A quick football score refresh every 15 minutes while games are being played (Thursday to Saturday nights, US time),
+# so the playoff picture moves soon after a game ends. The full refresh still runs every 3 hours.
+on:
+  schedule:
+    - cron: "*/15 16-23 * * 6"     # Saturday afternoon and evening
+    - cron: "*/15 0-8 * * 0"       # Saturday night, past midnight UTC
+    - cron: "*/20 23 * * 4,5"      # Thursday and Friday evening
+    - cron: "*/20 0-6 * * 5,6"
+    - cron: "7 * * * 2,3"          # hourly Tuesday/Wednesday: midweek games and the committee's new ranking
+  workflow_dispatch:
+
+concurrency:
+  group: live-scores
+  cancel-in-progress: false
+
+jobs:
+  scores:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      PG_POOL_MAX: "1"
+      FETCH_DELAY_MS: "200"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsx src/cli.ts migrate
+      - run: npx tsx src/cli.ts live --sport=cfb

@@ -88,6 +88,12 @@ export function SportHub() {
       <h1 style={{ marginBottom: 14 }}>{meta.long}</h1>
       {!inSeason(sport) && <p className="sub" style={{ marginTop: -8 }}>Off-season: these are the final numbers from {meta.seasons.find((x) => x.year === season)?.label}.</p>}
 
+      {sport === 'cfb' && inSeason(sport) && (
+        <Link to={`${base}/playoff`} className="po-promo">
+          <span><b>Playoff picture</b><span>Every team's chance to make the field. Pick games and watch it change.</span></span><span aria-hidden>›</span>
+        </Link>
+      )}
+
       <section className="hub-sec">
         <div className="hub-head"><h2>Today</h2><Link to={`${base}/today`}>All {games.length} games ›</Link></div>
         {today.loading ? <Loading rows={2} /> : games.length ? (

@@ -47,10 +47,12 @@ export async function upsertGameFromEvent(s: SportConfig, ev: any, seasonYear: n
 
 // Sweep every date in the season window (through today or `until`). Recent dates are always re-fetched
 // because scores and statuses change; older dates come from the cache.
-export async function ingestGames(s: SportConfig, seasonYear: number, opts: { until?: Date; refreshDays?: number } = {}) {
+export async function ingestGames(s: SportConfig, seasonYear: number, opts: { until?: Date; refreshDays?: number; onlyRecentDays?: number } = {}) {
   const until = opts.until ?? new Date();
   const refreshDays = opts.refreshDays ?? 3;
-  const dates = seasonDates(s, seasonYear, until);
+  // onlyRecentDays: just the last few days and tomorrow, for the quick game-day score refresh.
+  const dates = seasonDates(s, seasonYear, opts.onlyRecentDays != null ? new Date(Date.now() + 864e5) : until)
+    .filter((d) => opts.onlyRecentDays == null || (Date.now() - d.getTime()) / 864e5 <= opts.onlyRecentDays);
   let games = 0, finals = 0;
   for (const d of dates) {
     const ageDays = (Date.now() - d.getTime()) / 86_400_000;   // days before today (negative = upcoming)

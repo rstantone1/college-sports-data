@@ -31,6 +31,18 @@ export function rest<T = any>(path: string): Promise<T> {
   return cache.get(path)!;
 }
 
+// Straight from the database, skipping the saved copy: for pages that must reflect a game that just ended.
+export async function restFresh<T = any>(path: string, page = 1000): Promise<T[]> {
+  const out: T[] = [];
+  for (let off = 0; ; off += page) {
+    const r = await fetch(`${URL}/rest/v1/${path}${path.includes('?') ? '&' : '?'}limit=${page}&offset=${off}`, { headers: { apikey: KEY, Authorization: `Bearer ${KEY}` }, cache: 'no-store' });
+    if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
+    const rows: T[] = await r.json(); out.push(...rows);
+    if (rows.length < page) break;
+  }
+  return out;
+}
+
 // Page through results beyond PostgREST's 1000-row cap.
 export async function restAll<T = any>(path: string, page = 1000): Promise<T[]> {
   const out: T[] = [];
