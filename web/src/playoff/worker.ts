@@ -1,5 +1,6 @@
 // Runs the simulations off the main thread so the page stays smooth while thousands of seasons play out.
-import { simulate, chalk, type Pack, type Locks, type Result } from './sim';
+import { simulate, chalk, HOW, type Pack, type Locks, type Result } from './sim';
+import { stepsFor, officialSteps, type Step } from './tiebreak';
 import { COMMITTEE } from './config';
 
 let pack: Pack | null = null;
@@ -49,11 +50,31 @@ function paths(p: Pack, locks: Locks, team: number, chaos: number): { games: str
   return { games: mine.map((g) => g.key), rows };
 }
 
+// A team's road to its conference title game: how often it gets there, by what route (on record, or which
+// tiebreaker), and the conference results that move it most.
+export interface TitleRoad { conf: string; p: number; set: boolean; how: { how: Step | 'record'; p: number }[]; needs: { key: string; win: number; with: number; without: number }[]; steps: Step[]; official: boolean }
+function titleRoad(p: Pack, locks: Locks, team: number, chaos: number): TitleRoad | null {
+  const c = p.teams[team].conf; if (c < 0 || !p.confs[c].title) return null; const cf = p.confs[c];
+  const r = simulate(p, { runs: RUNS, locks, chaos, keep: true }); const N = r.runs, G = p.games.length, C = p.confs.length;
+  const inRun = new Uint8Array(N); for (let s = 0; s < N; s++) { const k = (s * C + c) * 2; if (r.pairRun![k] === team || r.pairRun![k + 1] === team) inRun[s] = 1; }
+  const needs: TitleRoad['needs'] = [];
+  p.games.forEach((g, gi) => {
+    if (!g.conf || g.key in locks || p.teams[g.h].conf !== c) return;
+    let nH = 0, inH = 0, inA = 0; for (let s = 0; s < N; s++) { if (r.outcomes![s * G + gi]) { nH++; inH += inRun[s]; } else inA += inRun[s]; }
+    const nA = N - nH; if (nH < 100 || nA < 100) return;
+    const pH = inH / nH, pA = inA / nA, d = pH - pA, pool = (inH + inA) / N, se = Math.sqrt(pool * (1 - pool) * (1 / nH + 1 / nA));
+    if (Math.abs(d) < 0.02 || Math.abs(d) < 2.8 * se) return;
+    needs.push({ key: g.key, win: d > 0 ? g.h : g.a, with: Math.max(pH, pA), without: Math.min(pH, pA) });
+  });
+  needs.sort((a, b) => (b.with - b.without) - (a.with - a.without));
+  return { conf: cf.name, p: r.titleGame[team], set: !!cf.set, how: HOW.map((h, k) => ({ how: h, p: r.tgHow[team * HOW.length + k] })).filter((x) => x.p >= 0.003), needs: needs.slice(0, 6), steps: stepsFor(cf.name), official: officialSteps(cf.name) };
+}
+
 self.onmessage = (e: MessageEvent) => {
   const { id, type, body } = e.data; let out: any = null; const transfer: Transferable[] = [];
   if (type === 'pack') { pack = { ...body.pack, committee: body.anchored ? COMMITTEE : { ...COMMITTEE, carry: () => 0, noise: () => 1.7 } } as Pack; out = true; }
   else if (!pack) out = null;
-  else if (type === 'sim') { const r: Result = simulate(pack, { runs: body.runs ?? RUNS, locks: body.locks, chaos: body.chaos, keep: true }); const { outcomes, made, seedRun, champRun, ...rest } = r; out = { result: rest, chalk: chalk(pack, body.locks) }; }
+  else if (type === 'sim') { const r: Result = simulate(pack, { runs: body.runs ?? RUNS, locks: body.locks, chaos: body.chaos, keep: true }); const { outcomes, made, seedRun, champRun, pairRun, ...rest } = r; out = { result: rest, chalk: chalk(pack, body.locks) }; }
   else if (type === 'team') {
     const mine = pack.games.filter((g) => (g.h === body.team || g.a === body.team) && !(g.key in body.locks));
     const pWin = mine.reduce((a, g) => a * (g.h === body.team ? g.p : 1 - g.p), 1);
@@ -64,6 +85,7 @@ self.onmessage = (e: MessageEvent) => {
   else if (type === 'tonight') { const r = simulate(pack, { runs: RUNS, locks: {}, keep: true, focus: body.teams }); out = { make: body.teams.map((t: number) => r.make[t]), games: r.lev?.games ?? [], d: r.lev ? Array.from(r.lev.d) : [] }; }
   else if (type === 'draw') out = draw(pack, body.locks, body.team, body.chaos ?? 1);
   else if (type === 'paths') out = paths(pack, body.locks, body.team, body.chaos ?? 1);
+  else if (type === 'title') out = titleRoad(pack, body.locks, body.team, body.chaos ?? 1);
   else if (type === 'season') {   // one random season, as picks for every game and title game
     const r = simulate(pack, { runs: 1, locks: body.locks, seed: body.seed, keep: true, noise: false });
     const picks: Locks = {}; pack.games.forEach((g, i) => { if (!(g.key in body.locks)) picks[g.key] = r.outcomes![i] ? g.h : g.a; });

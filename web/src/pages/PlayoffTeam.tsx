@@ -3,8 +3,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useCtx } from '../hooks';
 import { Back, Loading, ErrorBox } from '../components/Shell';
 import { pct } from '../model';
-import { pick, setLocks, teamScenario, drawItUp, seedPaths } from '../playoff/store';
-import type { DrawStep, SeedPath, SeedLine } from '../playoff/worker';
+import { pick, setLocks, teamScenario, drawItUp, seedPaths, titleRoad } from '../playoff/store';
+import type { DrawStep, SeedPath, SeedLine, TitleRoad } from '../playoff/worker';
+import { STEP_LABEL } from '../playoff/tiebreak';
 import { Pct, Logo, RippleToast, ScenarioBar, usePlayoffData, pickText } from './Playoff';
 import { ShareButton, type Card } from '../components/ShareCard';
 
@@ -32,8 +33,9 @@ export function PlayoffTeamPage() {
   const [sc, setSc] = useState<Awaited<ReturnType<typeof teamScenario>> | null>(null);
   const [plan, setPlan] = useState<{ start: number; steps: DrawStep[] } | null>(null); const [shown, setShown] = useState(0); const [drawing, setDrawing] = useState(false);
   const [sp, setSp] = useState<{ games: string[]; rows: SeedPath[] } | null>(null);
+  const [tr, setTr] = useState<TitleRoad | null>(null);
   const lockKey = JSON.stringify(s.locks) + s.chaos + s.updated;
-  useEffect(() => { if (ti < 0 || s.status !== 'ready') return; let live = true; setSc(null); setPlan(null); setSp(null); teamScenario(ti).then((r) => live && setSc(r)).then(() => seedPaths(ti)).then((r) => live && setSp(r)); return () => { live = false; }; }, [ti, lockKey, s.status]);
+  useEffect(() => { if (ti < 0 || s.status !== 'ready') return; let live = true; setSc(null); setPlan(null); setSp(null); setTr(null); teamScenario(ti).then((r) => live && setSc(r)).then(() => seedPaths(ti)).then((r) => live && setSp(r)).then(() => titleRoad(ti)).then((r) => live && setTr(r)); return () => { live = false; }; }, [ti, lockKey, s.status]);
   useEffect(() => { if (!plan || shown >= plan.steps.length) return; const t = setTimeout(() => setShown(shown + 1), 700); return () => clearTimeout(t); }, [plan, shown]);
 
   // Games that move this team's chances the most, its own and everyone else's.
@@ -103,6 +105,23 @@ export function PlayoffTeamPage() {
           <div key={name} className="po-stage"><span><b>{name}</b>{note ? <span className="muted sm" style={{ display: 'block' }}>{note}</span> : null}</span><span className="po-stage-bar"><i style={{ width: `${Math.max(1, v * 100)}%` }} /></span><Pct v={v} className="num" /></div>
         ))}</div>
       </section>
+
+      {tr && !tr.set && <section className="hsec">
+        <h2>Road to the {tr.conf} title game</h2>
+        {tr.p < 0.003 ? <div className="panel empty">{t.name} did not reach the {tr.conf} title game in any season we simulated.</div> : <>
+          <p className="muted hsub">{t.name} {tr.p > 0.997 ? 'gets there in nearly every simulated season' : <>gets there in <b style={{ color: 'var(--ink)' }}>{pct(tr.p)}</b> of simulated seasons</>}. Here is how, and which results move it most.</p>
+          <div className="po-stages">{tr.how.map((h) => (
+            <div key={h.how} className="po-stage"><span><b>{h.how === 'record' ? 'On record alone' : `Wins a tie on ${STEP_LABEL[h.how]}`}</b>{h.how === 'rating' ? <span className="muted sm" style={{ display: 'block' }}>the league's last step before a draw; an estimate</span> : null}</span><span className="po-stage-bar"><i style={{ width: `${Math.max(1, (h.p / Math.max(tr.p, 0.001)) * 100)}%` }} /></span><Pct v={h.p} className="num" /></div>
+          ))}</div>
+          {tr.needs.length > 0 && <>
+            <h3 style={{ margin: '16px 0 8px' }}>What has to happen</h3>
+            <div className="po-path">{tr.needs.map((n) => { const g = p.games.find((x) => x.key === n.key); if (!g) return null; const picked = s.locks[n.key] === n.win;
+              return <button key={n.key} className={`po-step ${picked ? 'on' : ''}`} onClick={() => pick(n.key, n.win, pickText(p, n.key, n.win))}><span><b>{pickText(p, n.key, n.win)}</b><span className="muted sm"> {new Date(g.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span></span><span className="num">{pct(n.without)} → <b className="up">{pct(n.with)}</b></span></button>; })}</div>
+            <p className="muted sm" style={{ marginTop: 8 }}>Each line shows their chance to reach the title game without that result and with it. Tap one to put it on the board.</p>
+          </>}
+          <p className="muted sm" style={{ marginTop: 10 }}>{tr.official ? `Ties are settled in the ${tr.conf}'s published order: ${tr.steps.filter((x) => x !== 'rating').map((x) => STEP_LABEL[x]).join(', then ')}, then an outside team rating and a draw. Those last two can't be worked out from wins and losses, so we estimate them from each team's season.` : `Ties here follow the order most leagues use (${tr.steps.filter((x) => x !== 'rating').map((x) => STEP_LABEL[x]).join(', then ')}). The ${tr.conf}'s own rules differ in places, so treat close calls as estimates.`}</p>
+        </>}
+      </section>}
 
       <section className="hsec">
         <h2>Path to the CFP</h2>

@@ -52,7 +52,8 @@ export function buildPack(season: number, ratings: Rating[], games: Game[], cfp:
     const site: 1 | 0 = g.neutral_site ? 0 : 1;
     const pre = H && A ? predict(H, A, L, site, 'cfb') : null;
     const bubH = A ? predict(bubble, A, L, site, 'cfb').aWin : FCS, bubA = H ? 1 - predict(H, bubble, L, site, 'cfb').aWin : FCS;
-    const conf = !isTitle && h >= 0 && a >= 0 && teams[h].conf >= 0 && teams[h].conf === teams[a].conf;
+    const armyNavy = h >= 0 && a >= 0 && /^(ARMY|NAVY)$/.test(teams[h].abbr) && /^(ARMY|NAVY)$/.test(teams[a].abbr);   // same league, but played as a nonconference game
+    const conf = !isTitle && !armyNavy && h >= 0 && a >= 0 && teams[h].conf >= 0 && teams[h].conf === teams[a].conf;
     const final = (g.completed && g.home_score != null && g.away_score != null) || lv?.state === 'final';
     if (final) {
       const hs = g.completed && g.home_score != null ? g.home_score : lv!.hs, as = g.completed && g.away_score != null ? g.away_score! : lv!.as;

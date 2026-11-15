@@ -122,14 +122,37 @@ function Play({ s }: { s: State }) {
     await setLocks({ ...acc }, 'One way the season could go'); setSimming(false);
   };
   const first = weeks[0]?.[0];
+  // One team's season: only its own games and the ones elsewhere that move its chances.
+  const { list: follows } = useFollows(); const [whoSel, setWho] = useState<number | null>(null);
+  const followed = follows.filter((f) => f.sport === 'cfb').map((f) => p.teams.findIndex((t) => t.id === f.team_id)).filter((i) => i >= 0);
+  const who = whoSel ?? followed[0] ?? -1;
+  const others = p.teams.map((_, i) => i).filter((i) => !followed.includes(i) && s.base!.make[i] >= 0.003).sort((a, b) => p.teams[a].name.localeCompare(p.teams[b].name));
+  const forTeam = useMemo(() => {
+    if (who < 0) return []; const l0 = s.base!.lev, k = l0 ? l0.teams.indexOf(who) : -1; const m = new Map<number, number>();
+    p.games.forEach((g, gi) => { if (g.h === who || g.a === who) m.set(gi, 1); });
+    if (l0 && k >= 0) l0.games.forEach((gi, n) => { const d = Math.abs(l0.d[n * l0.teams.length + k]); if (d >= 0.02 && p.games[gi].h >= 0 && p.games[gi].a >= 0 && !m.has(gi)) m.set(gi, d); });
+    return [...m.entries()].sort((a, b) => p.games[a[0]].date - p.games[b[0]].date);
+  }, [who, s.base, p]);
   return (
     <div>
+      <label className="po-who"><span>Show the games that matter for</span>
+        <select value={who} onChange={(e) => setWho(Number(e.target.value))}>
+          <option value={-1}>The whole playoff race</option>
+          {followed.length > 0 && <optgroup label="Your teams">{followed.map((i) => <option key={i} value={i}>{p.teams[i].name}</option>)}</optgroup>}
+          <optgroup label="Teams still alive">{others.map((i) => <option key={i} value={i}>{p.teams[i].name}</option>)}</optgroup>
+        </select>
+      </label>
       <div className="po-tools">
         <button className="po-btn" disabled={simming} onClick={simSeason}>{simming ? 'Playing it out…' : 'Sim the season'}</button>
         <label className="po-chaos"><span>Chalk</span><input type="range" min={-1} max={1} step={0.25} value={Math.log2(1 / s.chaos) / 2} onChange={(e) => setChaos(1 / Math.pow(2, Number(e.target.value) * 2))} aria-label="How wild the rest of the season gets" /><span>Chaos</span></label>
       </div>
       <p className="muted po-hint">Tap a winner and watch every team's chances move. Tap it again to undo.</p>
-      {weeks.map(([wk, ids]) => {
+      {who >= 0 && <section className="po-week">
+        <h3>{p.teams[who].name}: {forTeam.length} {forTeam.length === 1 ? 'game' : 'games'} that matter</h3>
+        {forTeam.length ? forTeam.map(([gi]) => <GameRow key={p.games[gi].key} s={s} g={p.games[gi]} gi={gi} />) : <p className="muted">Nothing left on the schedule moves {p.teams[who].name}'s chances.</p>}
+        <p className="muted sm">Their own games, plus the games elsewhere that move their chances by two points or more.</p>
+      </section>}
+      {who < 0 && weeks.map(([wk, ids]) => {
         const sorted = [...ids].sort((a, b) => (baseImpact.get(b) ?? 0) - (baseImpact.get(a) ?? 0) || p.games[a].date - p.games[b].date);
         const top = sorted.filter(matters), rest = sorted.filter((gi) => !matters(gi));
         const lo = Math.min(...ids.map((i) => p.games[i].date)), hi = Math.max(...ids.map((i) => p.games[i].date));

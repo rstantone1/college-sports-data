@@ -5,6 +5,10 @@
 // Every run reuses the same random draws for the same game, so changing one pick changes the answer because of the
 // pick and not because the dice were re-rolled. That keeps "what this result does to everyone else" stable.
 import type { Format, Committee } from './config';
+import { topTwo, stepsFor, type Step, type Table } from './tiebreak';
+
+// How a team reached its title game: on record alone, or by the tiebreaker step that separated it.
+export const HOW: (Step | 'record')[] = ['record', 'h2h', 'common', 'placed', 'oppPct', 'wins', 'rating'];
 
 export interface PTeam {
   id: number; name: string; abbr: string; logo: string | null; color: string | null;
@@ -48,6 +52,8 @@ export interface Result {
   expW: Float32Array;
   outcomes?: Uint8Array; made?: Uint8Array;    // per run: who won each game (1 = home), who made the field
   seedRun?: Uint8Array; champRun?: Int16Array; // per run: each team's seed (0 = out), each conference's champion
+  tgHow: Float32Array;                         // teams x HOW.length: share of seasons each team reached its title game that way
+  pairRun?: Int16Array;                        // per run: the two teams in each conference's title game
   lev?: { teams: number[]; games: number[]; d: Float32Array; impact: Float32Array };
 }
 
@@ -67,6 +73,13 @@ export function simulate(pack: Pack, o: Opts): Result {
   const seeds = new Float32Array(T * size);
   const outcomes = o.keep ? new Uint8Array(N * G) : undefined, made = o.keep ? new Uint8Array(N * T) : undefined;
   const seedRun = o.keep ? new Uint8Array(N * T) : undefined, champRun = o.keep ? new Int16Array(N * confs.length) : undefined;
+  const tgHow = new Float32Array(T * HOW.length), pairRun = o.keep ? new Int16Array(N * confs.length * 2).fill(-1) : undefined, howRun = new Int8Array(confs.length * 2);
+  // Each conference's own table: who has beaten whom so far, and the conference games still to come.
+  const tables = confs.map((cf) => { const n = cf.teams.length, loc = new Map(cf.teams.map((t, i) => [t, i])); const beat0 = new Uint8Array(n * n), played0 = new Uint8Array(n * n);
+    for (let x = 0; x < n; x++) for (let y = x + 1; y < n; y++) { const a = cf.teams[x], b = cf.teams[y], win = pack.h2h[a < b ? `${a}-${b}` : `${b}-${a}`]; if (win == null) continue; played0[x * n + y] = played0[y * n + x] = 1; if (win === a) beat0[x * n + y] = 1; else beat0[y * n + x] = 1; }
+    const left: [number, number, number][] = []; games.forEach((g, i) => { if (g.conf && loc.has(g.h) && loc.has(g.a)) left.push([i, loc.get(g.h)!, loc.get(g.a)!]); });
+    const tb: Table = { n, beat: new Uint8Array(n * n), played: new Uint8Array(n * n), cw: new Float32Array(n), cl: new Float32Array(n), wins: new Float32Array(n), rating: new Float32Array(n) };
+    return { beat0, played0, left, tb, steps: stepsFor(cf.name) }; });
   const lock = games.map((g) => (g.key in o.locks ? o.locks[g.key] : -1));
   // The committee is harder to call the more football is still to be played; once the user has settled the games,
   // what's left is only the committee's own unpredictability.
@@ -99,8 +112,7 @@ export function simulate(pack: Pack, o: Opts): Result {
       if (g.h >= 0) { if (hw) w[g.h]++; else l[g.h]++; wab[g.h] += (hw ? 1 : 0) - g.bubH; if (g.conf) { if (hw) cw[g.h]++; else cl[g.h]++; } }
       if (g.a >= 0) { if (hw) l[g.a]++; else w[g.a]++; wab[g.a] += (hw ? 0 : 1) - g.bubA; if (g.conf) { if (hw) cl[g.a]++; else cw[g.a]++; } }
     }
-    // Conference title games: the two best conference records. Ties go to head-to-head when it's two teams that
-    // played, otherwise to the better overall resume (a stand-in for each league's long tiebreaker list).
+    // Conference title games: the two best conference records, with ties settled by the league's own published order.
     let ok = true;
     for (let c = 0; c < confs.length; c++) {
       const cf = confs[c], u = r(); champ[c] = -1;
@@ -108,12 +120,11 @@ export function simulate(pack: Pack, o: Opts): Result {
       let a = -1, b = -1;
       if (cf.set) { a = cf.set[0]; b = cf.set[1]; }
       else {
-        const val = (i: number) => (cw[i] + cl[i] ? cw[i] / (cw[i] + cl[i]) : 0) * 1000 + wab[i] * 0.01;
-        for (const i of cf.teams) { if (a < 0 || val(i) > val(a)) { b = a; a = i; } else if (b < 0 || val(i) > val(b)) b = i; }
-        // Head-to-head for the last spot, when exactly one other team is level with the runner-up.
-        let tied = -1, nt = 0; const pb = cw[b] / Math.max(1, cw[b] + cl[b]);
-        for (const i of cf.teams) if (i !== a && i !== b && Math.abs(cw[i] / Math.max(1, cw[i] + cl[i]) - pb) < 1e-9) { tied = i; nt++; }
-        if (nt === 1) { const key = b < tied ? `${b}-${tied}` : `${tied}-${b}`; let win = pack.h2h[key]; if (win == null) { const gi = pack_gameBetween(pack, b, tied); if (gi >= 0) win = res[gi] ? games[gi].h : games[gi].a; } if (win === tied) b = tied; }
+        const tc = tables[c], tb = tc.tb, n = tb.n; tb.beat.set(tc.beat0); tb.played.set(tc.played0);
+        for (const [gi, x, y] of tc.left) { tb.played[x * n + y] = tb.played[y * n + x] = 1; if (res[gi]) tb.beat[x * n + y] = 1; else tb.beat[y * n + x] = 1; }
+        for (let x = 0; x < n; x++) { const i = cf.teams[x]; tb.cw[x] = cw[i]; tb.cl[x] = cl[i]; tb.wins[x] = w[i]; tb.rating[x] = wab[i]; }
+        const top = topTwo(tb, tc.steps); a = cf.teams[top.a]; b = cf.teams[top.b];
+        howRun[2 * c] = top.howA ? HOW.indexOf(top.howA) : 0; howRun[2 * c + 1] = top.howB ? HOW.indexOf(top.howB) : 0;
       }
       const forced = tLock[c] >= 0 ? tLock[c] : o.force?.mode === 'winout' && (a === o.force.team || b === o.force.team) ? o.force.team : -1;
       if (tLock[c] >= 0 && a !== tLock[c] && b !== tLock[c]) { ok = false; break; }
@@ -123,7 +134,7 @@ export function simulate(pack: Pack, o: Opts): Result {
       pair[2 * c] = a; pair[2 * c + 1] = b;
     }
     if (!ok) continue;   // a picked champion didn't reach its title game in this run: not part of the scenario
-    for (let c = 0; c < confs.length; c++) if (champ[c] >= 0) { titleGame[pair[2 * c]]++; titleGame[pair[2 * c + 1]]++; }
+    for (let c = 0; c < confs.length; c++) if (champ[c] >= 0) { titleGame[pair[2 * c]]++; titleGame[pair[2 * c + 1]]++; if (!confs[c].set) { tgHow[pair[2 * c] * HOW.length + howRun[2 * c]]++; tgHow[pair[2 * c + 1] * HOW.length + howRun[2 * c + 1]]++; } if (pairRun) { pairRun[(done * confs.length + c) * 2] = pair[2 * c]; pairRun[(done * confs.length + c) * 2 + 1] = pair[2 * c + 1]; } }
     // The committee: resume score, pulled toward where they already have the team, plus the noise they've shown.
     for (let i = 0; i < T; i++) {
       const t = teams[i]; const u1 = r(), u2 = r();
@@ -162,13 +173,12 @@ export function simulate(pack: Pack, o: Opts): Result {
     done++;
   }
   const div = (a: Float32Array) => { for (let i = 0; i < a.length; i++) a[i] /= Math.max(1, done); };
-  [make, bye, host, auto, titleGame, confChamp, expW, seeds, ...reach].forEach(div);
-  const out: Result = { runs: done, rare: done < Math.min(N, 300), make, bye, host, auto, titleGame, confChamp, reach, seeds, expW, outcomes: outcomes?.subarray(0, done * G), made: made?.subarray(0, done * T), seedRun: seedRun?.subarray(0, done * T), champRun: champRun?.subarray(0, done * confs.length) };
+  [make, bye, host, auto, titleGame, confChamp, expW, seeds, tgHow, ...reach].forEach(div);
+  const out: Result = { runs: done, rare: done < Math.min(N, 300), make, bye, host, auto, titleGame, confChamp, reach, seeds, expW, outcomes: outcomes?.subarray(0, done * G), made: made?.subarray(0, done * T), seedRun: seedRun?.subarray(0, done * T), champRun: champRun?.subarray(0, done * confs.length), tgHow, pairRun: pairRun?.subarray(0, done * confs.length * 2) };
   if (o.keep && done > 200) out.lev = leverage(pack, out, lock, o.focus);
   return out;
 }
 
-function pack_gameBetween(pack: Pack, a: number, b: number) { const g = pack.games; for (let i = 0; i < g.length; i++) if (g[i].conf && ((g[i].h === a && g[i].a === b) || (g[i].h === b && g[i].a === a))) return i; return -1; }
 // What each undecided game does to each contender: chance to make the field if the home team wins, minus if it loses.
 function leverage(pack: Pack, r: Result, lock: number[], focus?: number[]) {
   const T = pack.teams.length, G = pack.games.length, N = r.runs, out = r.outcomes!, made = r.made!;

@@ -4,7 +4,7 @@ import { useSyncExternalStore } from 'react';
 import { ratingsFor, restFresh, type Game, type Rating } from '../api';
 import { buildPack, type LiveGame, type CfpRelease } from './pack';
 import type { Pack, Locks, Result, Chalk } from './sim';
-import type { DrawStep, SeedPath } from './worker';
+import type { DrawStep, SeedPath, TitleRoad } from './worker';
 
 export interface Ripple { title: string; moves: { team: number; from: number; to: number }[]; at: number }
 export interface State {
@@ -132,6 +132,7 @@ export function setChaos(chaos: number) { set({ chaos }); rerun(); }
 export const clearRipple = () => set({ ripple: null });
 export const teamScenario = (team: number) => call<{ left: number; pWin: number; winout: { make: number; bye: number }; loseone: { make: number; bye: number } | null }>('team', { team, locks: S.locks, chaos: S.chaos });
 export const drawItUp = (team: number) => call<{ start: number; steps: DrawStep[] }>('draw', { team, locks: S.locks, chaos: S.chaos });
+export const titleRoad = (team: number) => call<TitleRoad | null>('title', { team, locks: S.locks, chaos: S.chaos });
 export const seedPaths = (team: number) => call<{ games: string[]; rows: SeedPath[] }>('paths', { team, locks: S.locks, chaos: S.chaos });
 // What every undecided game does to these teams' chance to make the field (no picks applied).
 export interface Tonight { make: number[]; games: number[]; d: number[] }

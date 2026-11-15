@@ -540,3 +540,6 @@ main table a{display:inline-flex;align-items:center;min-height:40px}
 .pt-odds-v{display:flex;flex-direction:column}
 .pt-odds-v b{font-size:30px;font-family:var(--display)}
 .card .v.up{color:var(--win)} .card .v.dn{color:var(--hot)}
+
+.po-who{display:flex;flex-direction:column;gap:6px;margin:0 0 14px;font-size:15px;font-weight:600}
+.po-who select{font:inherit;font-size:17px;font-weight:600;min-height:48px;padding:8px 12px;border:1px solid var(--rule);border-radius:10px;background:var(--panel,#fff);color:var(--ink);width:100%;max-width:420px}
