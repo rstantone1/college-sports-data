@@ -1,6 +1,7 @@
 -- The portal views were too slow to read live (about 3 seconds for a whole sport). Store the per-player rows once
 -- per data refresh; the two public views keep their names and columns.
-create materialized view if not exists mv_portal_players as
+drop materialized view if exists mv_portal_players;
+create materialized view mv_portal_players as
 select ps.sport_id, s.year as season_year, ps.player_id, ps.display_name, ps.team_id as from_team_id, cur.team_id as to_team_id,
        case when cur.team_id is null then 'gone' when cur.team_id = ps.team_id then 'kept' else 'moved' end as status,
        cur.position, cur.class_year, ps.gp, ps.gs, ps.min, ps.pts, ps.reb, ps.ast,
@@ -14,7 +15,7 @@ left join lateral (select r.team_id, r.class_year, r.position from rosters r whe
 left join v_ratings_latest rt on rt.sport_id = ps.sport_id and rt.season_year = ps.season_year and rt.team_id = ps.team_id
 -- A player who appeared for two teams in one season counts once, with the team he or she played more for.
 where not exists (select 1 from mv_player_season o where o.sport_id = ps.sport_id and o.season_year = ps.season_year and o.player_id = ps.player_id
-                  and (o.min > ps.min or (o.min = ps.min and o.team_id < ps.team_id)));
+                  and (coalesce(o.min, 0) > coalesce(ps.min, 0) or (coalesce(o.min, 0) = coalesce(ps.min, 0) and o.team_id < ps.team_id)));
 create unique index if not exists mv_portal_players_pk on mv_portal_players (sport_id, season_year, player_id);
 create index if not exists mv_portal_players_from on mv_portal_players (sport_id, season_year, from_team_id);
 create index if not exists mv_portal_players_to on mv_portal_players (sport_id, season_year, to_team_id);
