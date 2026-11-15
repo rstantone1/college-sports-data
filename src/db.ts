@@ -82,6 +82,6 @@ export async function close() {
 // limit, so it runs on its own connection with a 30-minute limit.
 export async function refreshRollups() {
   const c = await pool.connect();
-  try { await c.query(`set statement_timeout = '30min'`); await c.query(`select refresh_rollups()`); }
+  try { await c.query(`set statement_timeout = '30min'`); await c.query(`select refresh_rollups()`); await c.query(`select refresh_portal()`).catch((e) => console.warn('portal refresh skipped:', (e as Error).message)); }
   finally { c.release(); }
 }
