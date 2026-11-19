@@ -21,14 +21,14 @@ export function Shell({ children }: { children: ReactNode }) {
   const swap = (s: string, y0: number) => {
     const m = sportMeta(s);
     const y = m.seasons.some((x) => x.year === y0) ? y0 : m.seasons[0].year;
-    const keep = /^(today|rankings|stats|matchup|ballot|tournament|transfers)?$/.test(rest) ? rest : '';
+    const keep = /^(today|rankings|stats|matchup|ballot|tournament|transfers|draft)?$/.test(rest) ? rest : '';
     nav(`/${s}/${y}${keep ? '/' + keep : ''}`);
   };
   const tabs = [
     { to: base, t: 'Overview', end: true }, { to: `${base}/rankings`, t: 'Rankings' }, { to: `${base}/today`, t: 'Scores' },
     { to: `${base}/stats`, t: 'Stats' },
     ...(meta.tourney ? [{ to: `${base}/tournament`, t: 'Tournament' }] : []),
-    ...(meta.id === 'cfb' ? [{ to: `${base}/playoff`, t: 'Playoff' }] : []),
+    ...(meta.id === 'cfb' ? [{ to: `${base}/playoff`, t: 'Playoff' }, { to: `${base}/draft`, t: 'Draft' }] : []),
     ...(meta.hoops ? [{ to: `${base}/transfers`, t: 'Transfers' }] : []),
     { to: `${base}/matchup`, t: 'Matchup' }, { to: `${base}/ballot`, t: 'Your Top 25' },
   ];

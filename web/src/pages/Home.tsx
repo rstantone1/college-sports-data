@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { rest, restAll, ratingsFor, type Game, type Rating } from '../api';
 import { useAsync, useFollows, fmtTime, fmtDate } from '../hooks';
@@ -20,7 +21,7 @@ const chance = (p: number) => { const n = Math.round(1 / p); return p >= 0.5 ? p
 interface SportDay { s: string; season: number; rs: Rating[]; today: Game[]; yesterday: Game[]; before: Map<number, number>; since: string | null }
 
 export function HomePage() {
-  const { list: follows } = useFollows();
+  const { list: follows } = useFollows(); const [tab, setTab] = useState<string | null>(null);
   const month = new Date().getMonth() + 1;
   const live = ORDER.filter((s) => SEASON_MONTHS[s].includes(month));
   const off = ORDER.filter((s) => !live.includes(s));
@@ -165,10 +166,11 @@ export function HomePage() {
 
           <section className="hsec">
             <h2>Top 5 right now</h2>
-            <div className="grid tops">{(data.data ?? []).map((d) => <TopTen key={d.s} d={d} />)}</div>
+            {(data.data ?? []).length > 1 && <div className="chips">{(data.data ?? []).map((d) => <button key={d.s} className={`chip ${(tab ?? data.data![0].s) === d.s ? 'on' : ''}`} onClick={() => setTab(d.s)}>{sportMeta(d.s).long}</button>)}</div>}
+            <div className="grid tops">{(data.data ?? []).filter((d) => d.s === (tab ?? data.data![0].s)).map((d) => <TopTen key={d.s} d={d} />)}</div>
           </section>
 
-          <Movers days={data.data ?? []} />
+          <Movers days={(data.data ?? []).filter((d) => d.s === (tab ?? data.data![0].s))} />
         </>
       )}
 
@@ -176,6 +178,7 @@ export function HomePage() {
         <h2>Explore</h2>
         <div className="explore">
           {live.includes('cfb') && <Link to={`/cfb/${SPORTS.cfb.seasons[0].year}/playoff`} className="panel"><b>Playoff picture</b><span className="muted sm">Every team's chance to make the field. Pick games and watch it move.</span></Link>}
+          <Link to={`/cfb/${SPORTS.cfb.seasons[0].year}/draft`} className="panel"><b>NFL Draft board</b><span className="muted sm">The 400 draft-eligible players producing the most, updated after every game.</span></Link>
           <Link to="/record" className="panel"><b>How good are our picks?</b><span className="muted sm">Every pick we've made, and how often we were right.</span></Link>
           <Link to={`/mbb/${SPORTS.mbb.seasons[0].year}/matchup`} className="panel"><b>Matchup machine</b><span className="muted sm">Any two teams, any court: who wins and by how much.</span></Link>
           <Link to={`/mbb/${SPORTS.mbb.seasons[0].year}/transfers`} className="panel"><b>Transfer portal scoreboard</b><span className="muted sm">Which teams actually got better through the portal, in points a game.</span></Link>

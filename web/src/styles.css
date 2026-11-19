@@ -1,17 +1,14 @@
 :root{
-  --bg:#EEF0F3; --panel:#FFFFFF; --ink:#0B1220; --muted:#5D6778; --rule:#D8DCE3; --soft:#F5F6F8;
-  --hot:#E4312B; --hot-soft:#FCE4E2; --win:#147A4B; --win-soft:#DCF1E6; --cool:#2453D6; --cool-soft:#E1E8FB;
-  --gold:#E6A817;
-  --top:#0B1220; --top-ink:#FFFFFF;
-  --bar-cold:#3B7DD8; --bar-mid:#B8BEC9; --bar-hot:#E4532B;
+  /* Game night: a floodlit field after dark. Team colors do the decorating; the one house color is scoreboard amber. */
+  --bg:#0A1322; --panel:#111D31; --ink:#F2F5FA; --muted:#97A6BF; --rule:#22324C; --soft:#17263E;
+  --hot:#FF5A4F; --hot-soft:#3B1B1E; --win:#3FCF8E; --win-soft:#12342B; --cool:#6FA0FF; --cool-soft:#182B52;
+  --gold:#FFC53D;
+  --top:#060C17; --top-ink:#FFFFFF;
+  --bar-cold:#4C8DE8; --bar-mid:#3A4960; --bar-hot:#FF6A3D;
   --display:"Barlow Condensed", "Arial Narrow", sans-serif;
   --body:"Barlow", system-ui, -apple-system, sans-serif;
-  --r:12px;
-  color-scheme:light;
-}
-@media (prefers-color-scheme: dark){
-  :root{ --bg:#0C111B; --panel:#141B28; --ink:#EDF0F5; --muted:#9AA4B5; --rule:#263043; --soft:#1A2232;
-         --hot:#FF5A4F; --hot-soft:#3A1A1A; --win:#3FC68A; --win-soft:#14322A; --cool:#7C9BFF; --cool-soft:#1A2547; --top:#060A12; --bar-cold:#4C8DE8; --bar-mid:#3A4556; --bar-hot:#FF6A3D; color-scheme:dark; }
+  --r:14px;
+  color-scheme:dark;
 }
 *{box-sizing:border-box}
 html,body{margin:0;overflow-x:hidden;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45;-webkit-font-smoothing:antialiased}
@@ -543,3 +540,42 @@ main table a{display:inline-flex;align-items:center;min-height:40px}
 
 .po-who{display:flex;flex-direction:column;gap:6px;margin:0 0 14px;font-size:15px;font-weight:600}
 .po-who select{font:inherit;font-size:17px;font-weight:600;min-height:48px;padding:8px 12px;border:1px solid var(--rule);border-radius:10px;background:var(--panel,#fff);color:var(--ink);width:100%;max-width:420px}
+
+/* ---- game-night look ---- */
+body{background:radial-gradient(1100px 420px at 50% -160px, rgba(111,160,255,.16), transparent 70%) fixed, var(--bg)}
+.top{border-bottom:1px solid var(--rule)}
+.panel{border-color:transparent;box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}
+h1{letter-spacing:0}
+h2{font-size:30px}
+.chip{background:var(--soft);border-color:transparent;color:var(--ink)}
+.chip.on{background:var(--gold);color:#0A1322;border-color:var(--gold)}
+.tbl .rk{color:var(--gold)}
+.tbl th{border-bottom-color:var(--rule)}
+.tbl tr.row:hover td{background:var(--soft)}
+/* a team's own color marks its row, wherever a team is named */
+.team .swatch{width:4px;height:26px;border-radius:2px;flex:0 0 4px}
+.nav a.active{background:var(--gold);color:#0A1322;opacity:1}
+.subtabs a.active{background:var(--gold);color:#0A1322}
+input,select{color-scheme:dark}
+
+/* draft board */
+.draft-tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:0 0 14px}
+.draft-search{flex:1 1 220px;min-height:44px;font:inherit;font-size:16px;padding:8px 14px;border-radius:999px;border:1px solid var(--rule);background:var(--soft);color:var(--ink)}
+.draft-list{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.draft-list li{background:var(--panel);border-radius:var(--r);border-left:5px solid var(--tc);overflow:hidden}
+.draft-row{display:grid;grid-template-columns:44px 44px 1fr auto;gap:12px;align-items:center;padding:12px 14px 12px 10px}
+.draft-rk{font-size:30px;font-weight:800;text-align:center;color:var(--gold);line-height:1}
+.draft-row img{object-fit:contain}
+.draft-who{display:flex;flex-direction:column;min-width:0;gap:1px}
+.draft-who b{font-family:var(--display);font-weight:800;font-size:23px;line-height:1.05}
+.draft-who .muted{font-size:14px}
+.draft-line{font-size:15px;margin-top:3px}
+.draft-pos{display:flex;flex-direction:column;align-items:flex-end;gap:2px;white-space:nowrap}
+.draft-pos b{font-family:var(--display);font-weight:800;font-size:20px;background:var(--soft);padding:3px 10px;border-radius:8px}
+.draft-pos .muted{font-size:13px}
+.draft-more{display:block;width:100%;margin-top:12px;min-height:50px;border:0;border-radius:var(--r);background:var(--soft);color:var(--ink);font:inherit;font-weight:700;font-size:16px;cursor:pointer}
+.draft-how p{margin:0 0 10px;max-width:68ch}
+.draft-how p:last-child{margin:0}
+@media(max-width:520px){ .draft-row{grid-template-columns:34px 36px 1fr auto;gap:9px;padding-left:8px} .draft-rk{font-size:24px} .draft-row img{width:36px;height:36px} .draft-who b{font-size:20px} }
+/* team logos sit on a white coin so dark marks (Iowa, Notre Dame) stay readable at night */
+img[src*="teamlogos"]{background:#fff;border-radius:50%;padding:3px;box-sizing:border-box}
